@@ -1,0 +1,60 @@
+# SwiftLint configuration
+# https://github.com/realm/SwiftLint
+
+excluded:
+  - DerivedData
+  - .build
+  - QuotaBar.xcodeproj
+
+opt_in_rules:
+  - empty_count
+  - closure_spacing
+  - contains_over_first_not_nil
+  - discouraged_optional_boolean
+  - empty_string
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - modifier_order
+  - overridden_super_call
+  - private_action
+  - private_outlet
+  - sorted_first_last
+  - toggle_bool
+  - unneeded_parentheses_in_closure_argument
+  - vertical_whitespace_closing_braces
+
+disabled_rules:
+  - trailing_comma
+  - todo
+  - opening_brace
+
+line_length:
+  warning: 150
+  error: 200
+
+type_body_length:
+  warning: 400
+  error: 600
+
+file_length:
+  warning: 500
+  error: 1000
+
+function_body_length:
+  warning: 60
+  error: 100
+
+identifier_name:
+  min_length: 2
+  excluded:
+    - id
+    - r
+    - g
+    - b
+    - x
+    - y
+    - i
+
+nesting:
+  type_level: 3
+  function_level: 3
