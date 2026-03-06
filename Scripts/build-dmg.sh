@@ -69,7 +69,9 @@ if [[ "$SKIP_BUILD" == false ]]; then
             DEVELOPMENT_TEAM="${TEAM_ID}" \
             CODE_SIGN_STYLE="Manual" \
             PROVISIONING_PROFILE_SPECIFIER="" \
+            PROVISIONING_PROFILE="" \
             ENABLE_HARDENED_RUNTIME=YES \
+            ENABLE_APP_SANDBOX=NO \
             OTHER_CODE_SIGN_FLAGS="${KEYCHAIN_FLAGS}" \
             clean build
     else
