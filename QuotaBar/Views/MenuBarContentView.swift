@@ -1,0 +1,1560 @@
+import SwiftUI
+import AppKit
+
+struct MenuBarContentView: View {
+    @Bindable var store: SubscriptionStore
+    @State private var screen: Screen = .main
+    @State private var renamingAccountId: UUID?
+    @State private var renameText: String = ""
+
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
+
+    enum Screen: Equatable {
+        case main
+        case pickService
+        case pickAuthMethod(UUID, ServiceType)
+        case connectGitHub(UUID)
+        case connectClaude(UUID)
+        case connectClaudeAPIKey(UUID)
+        case connectOpenAI(UUID)
+        case connectOpenAIAPIKey(UUID)
+        case connectGemini(UUID)
+        case connectKimi(UUID)
+        case accountDetail(UUID)
+    }
+
+    var body: some View {
+        Group {
+            switch screen {
+            case .main:
+                mainView
+            case .pickService:
+                pickServiceView
+            case .pickAuthMethod(let id, let type):
+                pickAuthMethodView(accountId: id, serviceType: type)
+            case .connectGitHub(let id):
+                githubConnectView(accountId: id)
+            case .connectClaude(let id):
+                claudeConnectView(accountId: id)
+            case .connectClaudeAPIKey(let id):
+                claudeAPIKeyConnectView(accountId: id)
+            case .connectOpenAI(let id):
+                openaiConnectView(accountId: id)
+            case .connectOpenAIAPIKey(let id):
+                openaiAPIKeyConnectView(accountId: id)
+            case .connectGemini(let id):
+                geminiConnectView(accountId: id)
+            case .connectKimi(let id):
+                kimiConnectView(accountId: id)
+            case .accountDetail(let id):
+                accountDetailView(accountId: id)
+            }
+        }
+        .frame(width: 320)
+        .animation(.easeInOut(duration: 0.15), value: screen)
+    }
+
+    // MARK: - Main Screen
+
+    private var mainView: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack(alignment: .center) {
+                Text("QuotaBar")
+                    .font(.title2.weight(.bold))
+
+                Spacer()
+
+                if !store.accounts.isEmpty {
+                    Button {
+                        store.toggleViewMode()
+                    } label: {
+                        Image(systemName: store.viewMode == .compact ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tertiary)
+                    .help(store.viewMode == .compact ? "Expanded view" : "Compact view")
+
+                    Button {
+                        Task { await store.refreshAll() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tertiary)
+                }
+
+                Button {
+                    openSettings()
+                    NSApp.activate(ignoringOtherApps: true)
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tertiary)
+                .help("Settings")
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 10)
+
+            if store.accounts.isEmpty {
+                // Empty state
+                VStack(spacing: 10) {
+                    Image(systemName: "chart.bar.doc.horizontal")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.quaternary)
+                    Text("No accounts yet")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                    Text("Add your AI subscriptions to\ntrack usage across all accounts.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.vertical, 20)
+                .frame(maxWidth: .infinity)
+            } else {
+                // Scrollable grouped account list
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVStack(spacing: store.viewMode == .compact ? 1 : 4, pinnedViews: .sectionHeaders) {
+                        ForEach(store.groupedAccounts, id: \.0) { serviceType, accounts in
+                            Section {
+                                ForEach(accounts) { account in
+                                    accountView(for: account)
+                                }
+                            } header: {
+                                if store.groupedAccounts.count > 1 {
+                                    sectionHeader(for: serviceType, count: accounts.count)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 4)
+                }
+                .frame(maxHeight: 440)
+                .scrollBounceBehavior(.basedOnSize)
+            }
+
+            Divider().padding(.vertical, 6)
+
+            // Footer: Add + Quit
+            HStack {
+                Button {
+                    screen = .pickService
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus.circle.fill")
+                        Text("Add Account")
+                    }
+                    .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.blue)
+
+                Spacer()
+
+                Button("Quit") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .font(.caption)
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+        }
+    }
+
+    // MARK: - View Helpers
+
+    @ViewBuilder
+    private func accountView(for account: Account) -> some View {
+        if store.viewMode == .compact {
+            CompactAccountRow(
+                account: account,
+                isConnected: store.isConnected(for: account),
+                isRefreshing: store.isRefreshing(for: account),
+                renamingId: $renamingAccountId,
+                renameText: $renameText,
+                onConnect: {
+                    switch account.serviceType {
+                    case .claude:
+                        screen = account.authMethod == .apiKey ? .connectClaudeAPIKey(account.id) : .connectClaude(account.id)
+                    case .copilot: screen = .connectGitHub(account.id)
+                    case .chatgpt:
+                        screen = account.authMethod == .apiKey ? .connectOpenAIAPIKey(account.id) : .connectOpenAI(account.id)
+                    case .gemini: screen = .connectGemini(account.id)
+                    case .kimi: screen = .connectKimi(account.id)
+                    }
+                },
+                onRefresh: { Task { await store.refreshAccount(account) } },
+                onSaveRename: {
+                    store.renameAccount(id: account.id, label: renameText)
+                    renamingAccountId = nil
+                },
+                onDisconnect: { store.disconnectAccount(id: account.id) },
+                onRemove: { store.removeAccount(id: account.id) },
+                onTap: { screen = .accountDetail(account.id) },
+                showWeeklyLimit: store.showWeeklyLimit
+            )
+        } else {
+            AccountCardView(
+                account: account,
+                isConnected: store.isConnected(for: account),
+                isRefreshing: store.isRefreshing(for: account),
+                renamingId: $renamingAccountId,
+                renameText: $renameText,
+                onConnect: {
+                    switch account.serviceType {
+                    case .claude:
+                        screen = account.authMethod == .apiKey ? .connectClaudeAPIKey(account.id) : .connectClaude(account.id)
+                    case .copilot: screen = .connectGitHub(account.id)
+                    case .chatgpt:
+                        screen = account.authMethod == .apiKey ? .connectOpenAIAPIKey(account.id) : .connectOpenAI(account.id)
+                    case .gemini: screen = .connectGemini(account.id)
+                    case .kimi: screen = .connectKimi(account.id)
+                    }
+                },
+                onRefresh: { Task { await store.refreshAccount(account) } },
+                onSaveRename: {
+                    store.renameAccount(id: account.id, label: renameText)
+                    renamingAccountId = nil
+                },
+                onDisconnect: { store.disconnectAccount(id: account.id) },
+                onRemove: { store.removeAccount(id: account.id) },
+                onTap: { screen = .accountDetail(account.id) },
+                showWeeklyLimit: store.showWeeklyLimit
+            )
+        }
+    }
+
+    private func sectionHeader(for type: ServiceType, count: Int) -> some View {
+        HStack(spacing: 5) {
+            ServiceIconView(serviceType: type, avatarURL: nil, size: 12)
+            Text("\(type.displayName)")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text("\(count)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            Spacer()
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 3)
+    }
+
+    // MARK: - Pick Service Type
+
+    private var pickServiceView: some View {
+        VStack(spacing: 0) {
+            navHeader(title: "Add Account") {
+                screen = .main
+            }
+
+            VStack(spacing: 8) {
+                ForEach(ServiceType.allCases, id: \.self) { type in
+                    Button {
+                        if type.supportsMultipleAuthMethods {
+                            // Show auth method picker before creating account
+                            let account = store.addAccount(serviceType: type)
+                            screen = .pickAuthMethod(account.id, type)
+                        } else {
+                            let account = store.addAccount(serviceType: type, authMethod: type == .gemini || type == .kimi ? .apiKey : .oauth)
+                            switch type {
+                            case .copilot: screen = .connectGitHub(account.id)
+                            case .gemini: screen = .connectGemini(account.id)
+                            case .kimi: screen = .connectKimi(account.id)
+                            case .claude, .chatgpt: break // handled above
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            ServiceIconView(serviceType: type, avatarURL: nil, size: 32)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(type.displayName)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(type.authDescription)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(12)
+                        .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 16)
+        }
+    }
+
+    // MARK: - Auth Method Picker
+
+    private func pickAuthMethodView(accountId: UUID, serviceType: ServiceType) -> some View {
+        VStack(spacing: 0) {
+            navHeader(title: serviceType.displayName) {
+                store.removeAccount(id: accountId)
+                screen = .pickService
+            }
+
+            VStack(spacing: 12) {
+                ServiceIconView(serviceType: serviceType, avatarURL: nil, size: 48)
+
+                Text("Choose how to connect")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+
+                VStack(spacing: 10) {
+                    // OAuth option
+                    Button {
+                        if let index = store.accounts.firstIndex(where: { $0.id == accountId }) {
+                            store.accounts[index].authMethod = .oauth
+                            store.save()
+                        }
+                        switch serviceType {
+                        case .claude: screen = .connectClaude(accountId)
+                        case .chatgpt: screen = .connectOpenAI(accountId)
+                        default: break
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "person.badge.key")
+                                .font(.subheadline)
+                            Text("Sign in with OAuth")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(serviceType.accentColor)
+                    .padding(.horizontal, 16)
+
+                    // API Key option
+                    Button {
+                        if let index = store.accounts.firstIndex(where: { $0.id == accountId }) {
+                            store.accounts[index].authMethod = .apiKey
+                            store.save()
+                        }
+                        switch serviceType {
+                        case .claude: screen = .connectClaudeAPIKey(accountId)
+                        case .chatgpt: screen = .connectOpenAIAPIKey(accountId)
+                        default: break
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "key")
+                                .font(.subheadline)
+                            Text("Use API Key")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(serviceType.accentColor.opacity(0.7))
+                    .padding(.horizontal, 16)
+                }
+            }
+            .padding(.bottom, 16)
+        }
+    }
+
+    // MARK: - GitHub Connect (Inline)
+
+    private func githubConnectView(accountId: UUID) -> some View {
+        GitHubInlineConnectView(
+            authService: store.githubAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: info.username,
+                        avatarURL: info.avatarURL
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    screen = .main
+                } else {
+                    store.removeAccount(id: accountId)
+                    screen = .pickService
+                }
+            }
+        )
+    }
+
+    // MARK: - Claude Connect (Inline - OAuth)
+
+    private func claudeConnectView(accountId: UUID) -> some View {
+        ClaudeInlineConnectView(
+            authService: store.claudeAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    let displayName = info.name ?? info.email ?? nil
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: displayName,
+                        avatarURL: nil,
+                        authMethod: .oauth
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    screen = .main
+                } else {
+                    screen = .pickAuthMethod(accountId, .claude)
+                }
+            }
+        )
+    }
+
+    // MARK: - Claude Connect (Inline - API Key)
+
+    private func claudeAPIKeyConnectView(accountId: UUID) -> some View {
+        ClaudeAPIKeyInlineConnectView(
+            authService: store.claudeAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    let displayName = info.name ?? info.email ?? nil
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: displayName,
+                        avatarURL: nil,
+                        authMethod: .apiKey
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    screen = .main
+                } else {
+                    screen = .pickAuthMethod(accountId, .claude)
+                }
+            }
+        )
+    }
+
+    // MARK: - OpenAI Connect (Inline - OAuth)
+
+    private func openaiConnectView(accountId: UUID) -> some View {
+        OpenAIInlineConnectView(
+            authService: store.openaiAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    let displayName = info.name ?? info.email ?? nil
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: displayName,
+                        avatarURL: nil,
+                        authMethod: .oauth
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    screen = .main
+                } else {
+                    screen = .pickAuthMethod(accountId, .chatgpt)
+                }
+            }
+        )
+    }
+
+    // MARK: - OpenAI Connect (Inline - API Key)
+
+    private func openaiAPIKeyConnectView(accountId: UUID) -> some View {
+        OpenAIAPIKeyInlineConnectView(
+            authService: store.openaiAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    let displayName = info.name ?? info.email ?? nil
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: displayName,
+                        avatarURL: nil,
+                        authMethod: .apiKey
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    screen = .main
+                } else {
+                    screen = .pickAuthMethod(accountId, .chatgpt)
+                }
+            }
+        )
+    }
+
+    // MARK: - Gemini Connect (Inline - API Key)
+
+    private func geminiConnectView(accountId: UUID) -> some View {
+        GeminiInlineConnectView(
+            authService: store.geminiAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: info.name,
+                        avatarURL: nil
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    screen = .main
+                } else {
+                    store.removeAccount(id: accountId)
+                    screen = .pickService
+                }
+            }
+        )
+    }
+
+    // MARK: - Kimi Connect (Inline - API Key)
+
+    private func kimiConnectView(accountId: UUID) -> some View {
+        KimiInlineConnectView(
+            authService: store.kimiAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: info.name,
+                        avatarURL: nil
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    screen = .main
+                } else {
+                    store.removeAccount(id: accountId)
+                    screen = .pickService
+                }
+            }
+        )
+    }
+
+    // MARK: - Nav Header Helper
+
+    private func navHeader(title: String, onBack: @escaping () -> Void) -> some View {
+        HStack(spacing: 8) {
+            Button { onBack() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text(title)
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
+    }
+
+    // MARK: - Account Detail View
+
+    private func accountDetailView(accountId: UUID) -> some View {
+        let account = store.accounts.first(where: { $0.id == accountId })
+
+        return VStack(spacing: 0) {
+            navHeader(title: "Details") {
+                screen = .main
+            }
+
+            if let account {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Identity card
+                        VStack(spacing: 10) {
+                            ServiceIconView(
+                                serviceType: account.serviceType,
+                                avatarURL: store.isConnected(for: account) ? account.avatarURL : nil,
+                                size: 48
+                            )
+
+                            VStack(spacing: 2) {
+                                Text(account.label.isEmpty
+                                    ? (account.username ?? account.serviceType.displayName)
+                                    : account.label)
+                                    .font(.headline)
+
+                                if !account.label.isEmpty, let username = account.username {
+                                    Text(username)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Text(account.serviceType.displayName)
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+
+                        // Usage section
+                        if store.isConnected(for: account) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                detailSectionTitle("Usage")
+
+                                if account.serviceType == .claude && account.authMethod == .oauth {
+                                    // Claude OAuth: always show dual windows
+                                    detailRateRow(
+                                        label: "Hourly limit",
+                                        usage: account.fiveHourUsage ?? account.currentUsage,
+                                        resetDate: account.fiveHourResetDate ?? (account.fiveHourUsage == nil ? nil : account.resetDate),
+                                        accentColor: account.accentColor,
+                                        maxResetHours: 6
+                                    )
+
+                                    detailRateRow(
+                                        label: "Weekly limit",
+                                        usage: account.sevenDayUsage ?? account.currentUsage,
+                                        resetDate: account.sevenDayResetDate ?? (account.sevenDayUsage == nil ? nil : account.resetDate),
+                                        accentColor: account.accentColor,
+                                        maxResetHours: 192
+                                    )
+
+                                    if !account.hasDualWindows {
+                                        Text("Refresh to load rate window data")
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                            .frame(maxWidth: .infinity)
+                                    }
+
+                                    // Toggle to show/hide weekly limit in main view
+                                    Toggle(isOn: Binding(
+                                        get: { store.showWeeklyLimit },
+                                        set: { newValue in
+                                            store.showWeeklyLimit = newValue
+                                            UserDefaults.standard.set(newValue, forKey: "showWeeklyLimit")
+                                        }
+                                    )) {
+                                        Text("Show weekly limit in main view")
+                                            .font(.caption)
+                                    }
+                                    .toggleStyle(.switch)
+                                    .controlSize(.mini)
+                                    .padding(.top, 4)
+                                } else if account.isStatusOnly {
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(account.formattedUsage == "Inactive" ? .orange : .green)
+                                            .frame(width: 7, height: 7)
+                                        Text(account.formattedUsage)
+                                            .font(.subheadline.weight(.medium))
+                                            .foregroundStyle(.secondary)
+                                        Spacer()
+                                    }
+                                    .padding(10)
+                                    .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                                } else {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        GeometryReader { geo in
+                                            ZStack(alignment: .leading) {
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(.primary.opacity(0.06))
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(detailBarColor(account))
+                                                    .frame(width: max(0, geo.size.width * account.usagePercentage))
+                                            }
+                                        }
+                                        .frame(height: 8)
+
+                                        HStack {
+                                            Text(account.formattedUsage)
+                                                .font(.subheadline.weight(.medium))
+                                            Spacer()
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "clock")
+                                                    .font(.caption2)
+                                                Text("Resets \(account.resetLabel)")
+                                            }
+                                            .font(.caption)
+                                            .foregroundStyle(.tertiary)
+                                        }
+                                    }
+                                    .padding(10)
+                                    .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                                }
+                            }
+
+                            // Account info section
+                            VStack(alignment: .leading, spacing: 10) {
+                                detailSectionTitle("Account")
+
+                                VStack(spacing: 0) {
+                                    detailInfoRow(label: "Service", value: account.serviceType.displayName)
+                                    Divider().padding(.horizontal, 10)
+                                    detailInfoRow(
+                                        label: "Auth",
+                                        value: account.authMethod == .oauth ? "OAuth" : "API Key"
+                                    )
+                                    if let username = account.username {
+                                        Divider().padding(.horizontal, 10)
+                                        detailInfoRow(label: "Signed in as", value: username)
+                                    }
+                                    if !account.label.isEmpty {
+                                        Divider().padding(.horizontal, 10)
+                                        detailInfoRow(label: "Label", value: account.label)
+                                    }
+                                }
+                                .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                            }
+
+                            // Actions
+                            VStack(spacing: 8) {
+                                Button {
+                                    Task { await store.refreshAccount(account) }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        if store.isRefreshing(for: account) {
+                                            ProgressView().controlSize(.mini)
+                                        } else {
+                                            Image(systemName: "arrow.clockwise")
+                                                .font(.caption)
+                                        }
+                                        Text("Refresh Now")
+                                            .font(.subheadline.weight(.medium))
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(account.accentColor)
+
+                                Button {
+                                    store.disconnectAccount(id: account.id)
+                                    screen = .main
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "person.badge.minus")
+                                            .font(.caption)
+                                        Text("Disconnect")
+                                            .font(.subheadline.weight(.medium))
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+                }
+                .task {
+                    // Auto-refresh if dual window data is missing
+                    if account.serviceType == .claude && account.authMethod == .oauth && !account.hasDualWindows {
+                        await store.refreshAccount(account)
+                    }
+                }
+            } else {
+                Spacer()
+                Text("Account not found")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+    }
+
+    // MARK: - Detail View Helpers
+
+    private func detailSectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .textCase(.uppercase)
+    }
+
+    private func detailBarColor(_ account: Account) -> Color {
+        if account.usagePercentage >= 1.0 { return .red }
+        if account.usagePercentage >= 0.8 { return .orange }
+        return account.accentColor
+    }
+
+    private func detailRateBarColor(_ usage: Double, accent: Color) -> Color {
+        if usage >= 100 { return .red }
+        if usage >= 80 { return .orange }
+        return accent
+    }
+
+    private func detailRateRow(label: String, usage: Double, resetDate: Date?, accentColor: Color, maxResetHours: Double = 192) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(label)
+                    .font(.caption.weight(.medium))
+                Spacer()
+                Text("\(Int(usage))%")
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(usage >= 100 ? .red : .primary)
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(.primary.opacity(0.08))
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(detailRateBarColor(usage, accent: accentColor))
+                        .frame(width: max(0, geo.size.width * min(usage / 100, 1.0)))
+                }
+            }
+            .frame(height: 8)
+
+            if Account.isResetReasonable(resetDate, maxHours: maxResetHours) {
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 9))
+                    Text("Resets in \(Account.resetLabel(for: resetDate))")
+                        .font(.caption2)
+                }
+                .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(10)
+        .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func detailInfoRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.primary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+    }
+}
+
+// MARK: - GitHub Inline Connect
+
+struct GitHubInlineConnectView: View {
+    let authService: GitHubAuthService
+    let accountId: UUID
+    let onDone: (GitHubAccountInfo?) -> Void
+    @State private var started = false
+    @State private var copied = false
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .copilot, avatarURL: nil, size: 48)
+
+            if let code = authService.userCode {
+                Text("Enter this code on GitHub:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(code)
+                    .font(.system(.title2, design: .monospaced, weight: .bold))
+                    .kerning(4)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        ServiceType.copilot.accentColor.opacity(0.1),
+                        in: RoundedRectangle(cornerRadius: 10)
+                    )
+
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(code, forType: .string)
+                    copied = true
+                    Task {
+                        try? await Task.sleep(for: .seconds(2))
+                        copied = false
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        Text(copied ? "Copied!" : "Copy code")
+                    }
+                    .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+                .tint(ServiceType.copilot.accentColor)
+                .controlSize(.small)
+
+                ProgressView()
+                    .controlSize(.small)
+            } else if authService.isLoading {
+                ProgressView()
+                Text("Connecting...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Sign in with your GitHub account\nto track Copilot premium request usage.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+            }
+
+            if !started {
+                Button {
+                    started = true
+                    Task {
+                        let info = await authService.startDeviceFlow(for: accountId)
+                        onDone(info)
+                    }
+                } label: {
+                    Text("Sign in with GitHub")
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(ServiceType.copilot.accentColor)
+                .padding(.horizontal, 16)
+            }
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect GitHub")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - Claude Inline Connect
+
+struct ClaudeInlineConnectView: View {
+    let authService: AnthropicAuthService
+    let accountId: UUID
+    let onDone: (ClaudeAccountInfo?) -> Void
+    @State private var oauthStarted = false
+    @State private var authCode: String = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .claude, avatarURL: nil, size: 48)
+
+            if oauthStarted {
+                Text("Sign in on the browser, then\npaste the authorization code:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Paste authorization code...", text: $authCode)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                    }
+                }
+                .padding(.horizontal, 16)
+
+                Button {
+                    Task {
+                        errorMessage = nil
+                        let info = await authService.exchangeCode(authCode, for: accountId)
+                        if info != nil {
+                            onDone(info)
+                        } else {
+                            errorMessage = "Invalid code. Try again."
+                        }
+                    }
+                } label: {
+                    Group {
+                        if authService.isLoading {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text("Connect")
+                                .font(.subheadline.weight(.medium))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(ServiceType.claude.accentColor)
+                .disabled(authCode.isEmpty || authService.isLoading)
+                .padding(.horizontal, 16)
+            } else {
+                Text("Sign in with your Claude Pro/Max\naccount to track usage.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+
+                Button {
+                    authService.startOAuth(for: accountId)
+                    oauthStarted = true
+                } label: {
+                    Text("Sign in with Claude")
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(ServiceType.claude.accentColor)
+                .padding(.horizontal, 16)
+            }
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect Claude")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - OpenAI Inline Connect (Device Flow)
+
+struct OpenAIInlineConnectView: View {
+    let authService: OpenAIAuthService
+    let accountId: UUID
+    let onDone: (OpenAIAccountInfo?) -> Void
+    @State private var started = false
+    @State private var copied = false
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .chatgpt, avatarURL: nil, size: 48)
+
+            if let code = authService.userCode {
+                Text("Enter this code on OpenAI:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(code)
+                    .font(.system(.title2, design: .monospaced, weight: .bold))
+                    .kerning(4)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        ServiceType.chatgpt.accentColor.opacity(0.1),
+                        in: RoundedRectangle(cornerRadius: 10)
+                    )
+
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(code, forType: .string)
+                    copied = true
+                    Task {
+                        try? await Task.sleep(for: .seconds(2))
+                        copied = false
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        Text(copied ? "Copied!" : "Copy code")
+                    }
+                    .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+                .tint(ServiceType.chatgpt.accentColor)
+                .controlSize(.small)
+
+                ProgressView()
+                    .controlSize(.small)
+            } else if authService.isLoading {
+                ProgressView()
+                Text("Connecting...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Sign in with your OpenAI account\nto connect ChatGPT.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+            }
+
+            if !started {
+                Button {
+                    started = true
+                    Task {
+                        let info = await authService.startDeviceFlow(for: accountId)
+                        onDone(info)
+                    }
+                } label: {
+                    Text("Sign in with OpenAI")
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(ServiceType.chatgpt.accentColor)
+                .padding(.horizontal, 16)
+            }
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect ChatGPT")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - Claude API Key Inline Connect
+
+struct ClaudeAPIKeyInlineConnectView: View {
+    let authService: AnthropicAuthService
+    let accountId: UUID
+    let onDone: (ClaudeAccountInfo?) -> Void
+    @State private var apiKey: String = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .claude, avatarURL: nil, size: 48)
+
+            Text("Enter your Anthropic API key\nto connect Claude.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                SecureField("sk-ant-...", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            Button {
+                let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    errorMessage = "Please enter an API key."
+                    return
+                }
+                let info = authService.saveAPIKey(trimmed, for: accountId)
+                onDone(info)
+            } label: {
+                Text("Connect")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ServiceType.claude.accentColor)
+            .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(.horizontal, 16)
+
+            Link(destination: URL(string: "https://console.anthropic.com/settings/keys")!) {
+                Text("Get an API key →")
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+            }
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect Claude")
+                .font(.headline)
+
+            HStack(spacing: 4) {
+                Image(systemName: "key")
+                    .font(.caption2)
+                Text("API Key")
+                    .font(.caption2.weight(.medium))
+            }
+            .foregroundStyle(ServiceType.claude.accentColor)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(ServiceType.claude.accentColor.opacity(0.1), in: Capsule())
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - OpenAI API Key Inline Connect
+
+struct OpenAIAPIKeyInlineConnectView: View {
+    let authService: OpenAIAuthService
+    let accountId: UUID
+    let onDone: (OpenAIAccountInfo?) -> Void
+    @State private var apiKey: String = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .chatgpt, avatarURL: nil, size: 48)
+
+            Text("Enter your OpenAI API key\nto connect ChatGPT.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                SecureField("sk-...", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            Button {
+                let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    errorMessage = "Please enter an API key."
+                    return
+                }
+                let info = authService.saveAPIKey(trimmed, for: accountId)
+                onDone(info)
+            } label: {
+                Text("Connect")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ServiceType.chatgpt.accentColor)
+            .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(.horizontal, 16)
+
+            Link(destination: URL(string: "https://platform.openai.com/api-keys")!) {
+                Text("Get an API key →")
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+            }
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect ChatGPT")
+                .font(.headline)
+
+            HStack(spacing: 4) {
+                Image(systemName: "key")
+                    .font(.caption2)
+                Text("API Key")
+                    .font(.caption2.weight(.medium))
+            }
+            .foregroundStyle(ServiceType.chatgpt.accentColor)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(ServiceType.chatgpt.accentColor.opacity(0.1), in: Capsule())
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - Kimi Inline Connect (API Key)
+
+struct KimiInlineConnectView: View {
+    let authService: KimiAuthService
+    let accountId: UUID
+    let onDone: (KimiAccountInfo?) -> Void
+    @State private var apiKey: String = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .kimi, avatarURL: nil, size: 48)
+
+            Text("Enter your Moonshot API key\nto connect Kimi AI.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                SecureField("sk-...", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            Button {
+                let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    errorMessage = "Please enter an API key."
+                    return
+                }
+                let info = authService.saveAPIKey(trimmed, for: accountId)
+                onDone(info)
+            } label: {
+                Text("Connect")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ServiceType.kimi.accentColor)
+            .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(.horizontal, 16)
+
+            Link(destination: URL(string: "https://platform.moonshot.cn/console/api-keys")!) {
+                Text("Get an API key →")
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+            }
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect Kimi AI")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - Gemini Inline Connect (API Key)
+
+struct GeminiInlineConnectView: View {
+    let authService: GeminiAuthService
+    let accountId: UUID
+    let onDone: (GeminiAccountInfo?) -> Void
+    @State private var apiKey: String = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .gemini, avatarURL: nil, size: 48)
+
+            Text("Enter your Google AI API key\nto connect Gemini.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                SecureField("AI...", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            Button {
+                let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    errorMessage = "Please enter an API key."
+                    return
+                }
+                let info = authService.saveAPIKey(trimmed, for: accountId)
+                onDone(info)
+            } label: {
+                Text("Connect")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ServiceType.gemini.accentColor)
+            .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(.horizontal, 16)
+
+            Link(destination: URL(string: "https://aistudio.google.com/apikey")!) {
+                Text("Get an API key →")
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+            }
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect Gemini")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}

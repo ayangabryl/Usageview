@@ -1,0 +1,317 @@
+import SwiftUI
+import ServiceManagement
+
+struct SettingsView: View {
+    @Bindable var store: SubscriptionStore
+
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var autoRefreshInterval: Int = UserDefaults.standard.integer(forKey: "autoRefreshMinutes")
+    @State private var editingAccountId: UUID? = nil
+    @State private var editingLabel: String = ""
+    @State private var showResetConfirmation = false
+    @State private var selectedTab: SettingsTab = .accounts
+
+    enum SettingsTab: String, CaseIterable {
+        case accounts = "Accounts"
+        case general = "General"
+        case advanced = "Advanced"
+
+        var icon: String {
+            switch self {
+            case .accounts: "person.2.fill"
+            case .general: "gearshape.fill"
+            case .advanced: "wrench.and.screwdriver.fill"
+            }
+        }
+    }
+
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            Tab(SettingsTab.accounts.rawValue, systemImage: SettingsTab.accounts.icon, value: .accounts) {
+                ScrollView {
+                    accountsContent
+                        .padding(24)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+
+            Tab(SettingsTab.general.rawValue, systemImage: SettingsTab.general.icon, value: .general) {
+                ScrollView {
+                    generalContent
+                        .padding(24)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+
+            Tab(SettingsTab.advanced.rawValue, systemImage: SettingsTab.advanced.icon, value: .advanced) {
+                ScrollView {
+                    advancedContent
+                        .padding(24)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+        }
+        .tabViewStyle(.automatic)
+    }
+
+    // MARK: - Accounts Content
+
+    private var accountsContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Rename your connected accounts. Changes are reflected in the menu bar.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            if store.accounts.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "person.crop.circle.badge.questionmark")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.quaternary)
+                    Text("No accounts yet")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                    Text("Add accounts from the menu bar dropdown.")
+                        .font(.caption)
+                        .foregroundStyle(.quaternary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(store.accounts) { account in
+                        accountRow(account)
+                    }
+                }
+            }
+        }
+    }
+
+    private func accountRow(_ account: Account) -> some View {
+        HStack(spacing: 12) {
+            ServiceIconView(
+                serviceType: account.serviceType,
+                avatarURL: account.avatarURL,
+                size: 28
+            )
+
+            if editingAccountId == account.id {
+                TextField("Account name", text: $editingLabel, onCommit: {
+                    commitRename(for: account.id)
+                })
+                .textFieldStyle(.roundedBorder)
+                .font(.subheadline)
+
+                Button {
+                    commitRename(for: account.id)
+                } label: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    editingAccountId = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(account.label.isEmpty
+                        ? (account.username ?? account.serviceType.displayName)
+                        : account.label)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(store.isConnected(for: account) ? .green : .gray)
+                            .frame(width: 6, height: 6)
+                        Text(store.isConnected(for: account) ? "Connected" : "Disconnected")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("·")
+                            .foregroundStyle(.quaternary)
+                        Text(account.serviceType.displayName)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+
+                Spacer()
+
+                Button {
+                    editingLabel = account.label.isEmpty
+                        ? (account.username ?? account.serviceType.displayName)
+                        : account.label
+                    editingAccountId = account.id
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Rename")
+            }
+        }
+        .padding(10)
+        .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func commitRename(for id: UUID) {
+        let trimmed = editingLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            store.renameAccount(id: id, label: trimmed)
+        }
+        editingAccountId = nil
+    }
+
+    // MARK: - General Content
+
+    private var generalContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Launch at Login
+            settingsRow(icon: "power", title: "Launch at Login", subtitle: "Start Usage automatically when your Mac boots") {
+                Toggle("", isOn: $launchAtLogin)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+            }
+            .onChange(of: launchAtLogin) { _, newValue in
+                do {
+                    if newValue {
+                        try SMAppService.mainApp.register()
+                    } else {
+                        try SMAppService.mainApp.unregister()
+                    }
+                } catch {
+                    launchAtLogin = !newValue
+                }
+            }
+
+            // Default View
+            settingsRow(icon: "rectangle.split.3x1", title: "Default View", subtitle: "Choose between expanded or compact layout") {
+                Picker("", selection: Binding(
+                    get: { store.viewMode },
+                    set: { _ in store.toggleViewMode() }
+                )) {
+                    Text("Expanded").tag(ViewMode.expanded)
+                    Text("Compact").tag(ViewMode.compact)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 160)
+            }
+
+            // Auto Refresh
+            settingsRow(icon: "arrow.clockwise", title: "Auto Refresh", subtitle: "Automatically refresh usage data periodically") {
+                Picker("", selection: $autoRefreshInterval) {
+                    Text("Off").tag(0)
+                    Text("5 min").tag(5)
+                    Text("15 min").tag(15)
+                    Text("30 min").tag(30)
+                    Text("1 hour").tag(60)
+                }
+                .pickerStyle(.menu)
+                .frame(width: 100)
+            }
+            .onChange(of: autoRefreshInterval) { _, newValue in
+                UserDefaults.standard.set(newValue, forKey: "autoRefreshMinutes")
+            }
+
+            // Claude Weekly Limit
+            settingsRow(icon: "calendar.badge.clock", title: "Weekly Limit", subtitle: "Show Claude 7-day rate window alongside the 5-hour window") {
+                Toggle("", isOn: Binding(
+                    get: { store.showWeeklyLimit },
+                    set: { newValue in
+                        store.showWeeklyLimit = newValue
+                        UserDefaults.standard.set(newValue, forKey: "showWeeklyLimit")
+                    }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
+        }
+    }
+
+    // MARK: - Advanced Content
+
+    private var advancedContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Reset All Data
+            settingsRow(icon: "trash", iconColor: .red, title: "Reset All Data", subtitle: "Remove all accounts, tokens, and cached data") {
+                Button("Reset…", role: .destructive) {
+                    showResetConfirmation = true
+                }
+                .controlSize(.small)
+            }
+            .confirmationDialog(
+                "Reset all data?",
+                isPresented: $showResetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Reset Everything", role: .destructive) {
+                    for account in store.accounts {
+                        store.removeAccount(id: account.id)
+                    }
+                    UserDefaults.standard.removeObject(forKey: "autoRefreshMinutes")
+                    autoRefreshInterval = 0
+                }
+            } message: {
+                Text("This will disconnect and remove all accounts. This cannot be undone.")
+            }
+
+            Divider()
+
+            // App Info
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("QuotaBar")
+                        .font(.subheadline.weight(.medium))
+                    Text("AI usage tracker for your menu bar")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("v1.0.0")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(.primary.opacity(0.05), in: Capsule())
+            }
+        }
+    }
+
+    // MARK: - Reusable Settings Row
+
+    private func settingsRow<Content: View>(
+        icon: String,
+        iconColor: Color = .secondary,
+        title: String,
+        subtitle: String,
+        @ViewBuilder trailing: () -> Content
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(iconColor)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            trailing()
+        }
+        .padding(12)
+        .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+    }
+}
