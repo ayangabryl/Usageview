@@ -29,20 +29,9 @@ xcuserdata/
 Packages/
 Package.resolved
 
-# ─── .NET / C# ───────────────────────────────────────────────────────────────
-QuotaBarWindows/bin/
-QuotaBarWindows/obj/
-QuotaBarWindows/publish/
-*.user
-*.suo
-.vs/
-*.nupkg
-*.snupkg
-
 # ─── Secrets ─────────────────────────────────────────────────────────────────
 *.env
 *.pem
 *.p12
 *.key
 Secrets.swift
-Secrets.cs
