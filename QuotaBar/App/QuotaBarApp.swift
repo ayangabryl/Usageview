@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct QuotaBarApp: App {
-    @State private var store = SubscriptionStore()
+    @State private var store = AccountStore()
     @State private var refreshTimer: Timer?
 
     init() {

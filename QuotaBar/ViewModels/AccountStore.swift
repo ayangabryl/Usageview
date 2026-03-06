@@ -8,7 +8,7 @@ enum ViewMode: String, CaseIterable {
 
 @Observable
 @MainActor
-final class SubscriptionStore {
+final class AccountStore {
     var accounts: [Account] = []
     var refreshingIds: Set<UUID> = []
     var viewMode: ViewMode = .expanded

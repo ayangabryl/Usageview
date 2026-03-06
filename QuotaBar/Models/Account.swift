@@ -1,92 +1,6 @@
 import Foundation
 import SwiftUI
 
-// MARK: - Service Type
-
-enum ServiceType: String, Codable, CaseIterable, Sendable {
-    case claude
-    case copilot
-    case chatgpt
-    case gemini
-    case kimi
-
-    var displayName: String {
-        switch self {
-        case .claude: "Claude"
-        case .copilot: "GitHub Copilot"
-        case .chatgpt: "ChatGPT"
-        case .gemini: "Gemini"
-        case .kimi: "Kimi AI"
-        }
-    }
-
-    /// Asset catalog image name for the bundled brand logo
-    var assetName: String {
-        switch self {
-        case .claude: "AnthropicLogo"
-        case .copilot: "GitHubLogo"
-        case .chatgpt: "OpenAILogo"
-        case .gemini: "GeminiLogo"
-        case .kimi: "KimiLogo"
-        }
-    }
-
-    var accentColor: Color {
-        switch self {
-        case .claude: Color(hex: "#D97706")
-        case .copilot: Color(hex: "#6366F1")
-        case .chatgpt: Color(hex: "#10A37F")
-        case .gemini: Color(hex: "#4285F4")
-        case .kimi: Color(hex: "#000000")
-        }
-    }
-
-    var authDescription: String {
-        switch self {
-        case .claude: "OAuth or API key"
-        case .copilot: "Device flow sign-in"
-        case .chatgpt: "OAuth or API key"
-        case .gemini: "API key"
-        case .kimi: "API key"
-        }
-    }
-
-    /// Whether this service supports multiple auth methods
-    var supportsMultipleAuthMethods: Bool {
-        switch self {
-        case .claude, .chatgpt: true
-        case .copilot, .gemini, .kimi: false
-        }
-    }
-
-    var defaultUsageUnit: String {
-        switch self {
-        case .claude: "% used"
-        case .copilot: "premium requests"
-        case .chatgpt: "premium requests"
-        case .gemini: "requests"
-        case .kimi: "tokens"
-        }
-    }
-
-    var defaultLimit: Double {
-        switch self {
-        case .claude: 100
-        case .copilot: 300
-        case .chatgpt: 0
-        case .gemini: 0
-        case .kimi: 0
-        }
-    }
-}
-
-// MARK: - Auth Method
-
-enum AuthMethod: String, Codable, Sendable {
-    case oauth
-    case apiKey
-}
-
 // MARK: - Account
 
 struct Account: Codable, Identifiable, Sendable {
@@ -213,20 +127,5 @@ struct Account: Codable, Identifiable, Sendable {
 
     var accentColor: Color {
         serviceType.accentColor
-    }
-}
-
-// MARK: - Color Extension
-
-extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-        let scanner = Scanner(string: hex)
-        var rgbValue: UInt64 = 0
-        scanner.scanHexInt64(&rgbValue)
-        let r = Double((rgbValue & 0xFF0000) >> 16) / 255.0
-        let g = Double((rgbValue & 0x00FF00) >> 8) / 255.0
-        let b = Double((rgbValue & 0x0000FF)) / 255.0
-        self.init(red: r, green: g, blue: b)
     }
 }

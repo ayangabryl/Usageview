@@ -72,26 +72,37 @@ Contributions are welcome! Feel free to:
 
 ```
 QuotaBar/
-├── QuotaBarApp.swift              # App entry point, menu bar setup
+├── App/
+│   └── QuotaBarApp.swift              # App entry point, menu bar setup
 ├── Models/
-│   └── Subscription.swift         # ServiceType, Account, AuthMethod
+│   ├── Account.swift                  # Account struct
+│   ├── AuthMethod.swift               # OAuth / API key enum
+│   └── ServiceType.swift              # Supported AI providers
 ├── Services/
-│   ├── AnthropicAuthService.swift  # Claude OAuth + API key auth
-│   ├── AnthropicUsageService.swift # Claude usage fetching
-│   ├── GitHubAuthService.swift     # Copilot device flow auth
-│   ├── GitHubUsageService.swift    # Copilot usage fetching
-│   ├── OpenAIAuthService.swift     # ChatGPT OAuth + API key auth
-│   ├── OpenAIUsageService.swift    # ChatGPT usage fetching
-│   ├── GeminiAuthService.swift     # Gemini API key auth
-│   ├── GeminiUsageService.swift    # Gemini validation
-│   ├── KimiAuthService.swift       # Kimi API key auth
-│   └── KimiUsageService.swift      # Kimi validation
+│   ├── Anthropic/
+│   │   ├── AnthropicAuthService.swift  # Claude OAuth + API key auth
+│   │   └── AnthropicUsageService.swift # Claude usage fetching
+│   ├── GitHub/
+│   │   ├── GitHubAuthService.swift     # Copilot device flow auth
+│   │   └── GitHubUsageService.swift    # Copilot usage fetching
+│   ├── OpenAI/
+│   │   ├── OpenAIAuthService.swift     # ChatGPT OAuth + API key auth
+│   │   └── OpenAIUsageService.swift    # ChatGPT usage fetching
+│   ├── Gemini/
+│   │   ├── GeminiAuthService.swift     # Gemini API key auth
+│   │   └── GeminiUsageService.swift    # Gemini validation
+│   └── Kimi/
+│       ├── KimiAuthService.swift       # Kimi API key auth
+│       └── KimiUsageService.swift      # Kimi validation
 ├── ViewModels/
-│   └── SubscriptionStore.swift    # Central state management
-└── Views/
-    ├── MenuBarContentView.swift   # Main menu bar dropdown UI
-    ├── SettingsView.swift         # Settings window
-    └── SubscriptionCardView.swift # Account card components
+│   └── AccountStore.swift             # Central state management
+├── Views/
+│   ├── MenuBarContentView.swift       # Main menu bar dropdown UI
+│   ├── SettingsView.swift             # Settings window
+│   └── AccountCardView.swift          # Account card components
+├── Extensions/
+│   └── Color+Hex.swift                # Color hex initializer
+└── Assets.xcassets/
 ```
 
 ## License

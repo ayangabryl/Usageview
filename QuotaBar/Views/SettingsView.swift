@@ -2,7 +2,7 @@ import SwiftUI
 import ServiceManagement
 
 struct SettingsView: View {
-    @Bindable var store: SubscriptionStore
+    @Bindable var store: AccountStore
 
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var autoRefreshInterval: Int = UserDefaults.standard.integer(forKey: "autoRefreshMinutes")

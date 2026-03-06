@@ -6,9 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
 		54B185972F59CD0E0013A3ED /* QuotaBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */

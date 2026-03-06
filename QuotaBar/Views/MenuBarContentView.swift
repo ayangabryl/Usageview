@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 struct MenuBarContentView: View {
-    @Bindable var store: SubscriptionStore
+    @Bindable var store: AccountStore
     @State private var screen: Screen = .main
     @State private var renamingAccountId: UUID?
     @State private var renameText: String = ""
