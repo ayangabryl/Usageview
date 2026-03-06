@@ -35,3 +35,6 @@ Package.resolved
 *.p12
 *.key
 Secrets.swift
+
+# ─── Build Artifacts ─────────────────────────────────────────────────────────
+*.dmg

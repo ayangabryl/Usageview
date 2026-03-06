@@ -1,4 +1,4 @@
-.PHONY: setup lint fix build clean
+.PHONY: setup lint fix build release dmg clean
 
 # One-time setup: installs SwiftLint and git hooks
 setup:
@@ -21,8 +21,13 @@ build:
 release:
 	@xcodebuild -scheme QuotaBar -configuration Release build | tail -5
 
+# Build DMG installer
+dmg:
+	@chmod +x Scripts/build-dmg.sh
+	@./Scripts/build-dmg.sh
+
 # Clean build artifacts
 clean:
 	@xcodebuild -scheme QuotaBar clean 2>/dev/null || true
-	@rm -rf DerivedData
+	@rm -rf DerivedData build
 	@echo "✅ Cleaned"
