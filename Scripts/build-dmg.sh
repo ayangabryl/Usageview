@@ -52,6 +52,13 @@ if [[ "$SKIP_BUILD" == false ]]; then
     # Use Developer ID signing if available (CI), otherwise ad-hoc for local dev
     if [[ -n "${CODE_SIGN_IDENTITY:-}" && -n "${TEAM_ID:-}" ]]; then
         echo "🔐 Code signing with: ${CODE_SIGN_IDENTITY}"
+
+        # Determine keychain flags (CI uses a temporary keychain)
+        KEYCHAIN_FLAGS=""
+        if [[ -n "${KEYCHAIN_NAME:-}" ]]; then
+            KEYCHAIN_FLAGS="--keychain ${KEYCHAIN_NAME}"
+        fi
+
         xcodebuild \
             -scheme "$SCHEME" \
             -configuration "$CONFIG" \
@@ -61,7 +68,10 @@ if [[ "$SKIP_BUILD" == false ]]; then
             CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
             DEVELOPMENT_TEAM="${TEAM_ID}" \
             CODE_SIGN_STYLE="Manual" \
-            clean build 2>&1 | tail -3
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            ENABLE_HARDENED_RUNTIME=YES \
+            OTHER_CODE_SIGN_FLAGS="${KEYCHAIN_FLAGS}" \
+            clean build
     else
         echo "⚠️  No signing identity — using ad-hoc signature (local dev)"
         xcodebuild \

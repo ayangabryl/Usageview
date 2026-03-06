@@ -60,6 +60,7 @@ jobs:
         env:
           CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
+          KEYCHAIN_NAME: ${{ env.KEYCHAIN_NAME }}
         run: |
           chmod +x Scripts/build-dmg.sh
           ./Scripts/build-dmg.sh
