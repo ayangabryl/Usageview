@@ -69,11 +69,12 @@ if [[ "$SKIP_BUILD" == false ]]; then
             DEVELOPMENT_TEAM="${TEAM_ID}" \
             CODE_SIGN_STYLE="Manual" \
             CODE_SIGN_ENTITLEMENTS="" \
+            CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
             PROVISIONING_PROFILE_SPECIFIER="" \
             PROVISIONING_PROFILE="" \
             ENABLE_HARDENED_RUNTIME=YES \
             ENABLE_APP_SANDBOX=NO \
-            OTHER_CODE_SIGN_FLAGS="${KEYCHAIN_FLAGS}" \
+            OTHER_CODE_SIGN_FLAGS="--timestamp ${KEYCHAIN_FLAGS}" \
             clean build
     else
         echo "⚠️  No signing identity — using ad-hoc signature (local dev)"
