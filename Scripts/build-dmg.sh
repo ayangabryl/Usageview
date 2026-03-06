@@ -68,6 +68,7 @@ if [[ "$SKIP_BUILD" == false ]]; then
             CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
             DEVELOPMENT_TEAM="${TEAM_ID}" \
             CODE_SIGN_STYLE="Manual" \
+            CODE_SIGN_ENTITLEMENTS="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
             PROVISIONING_PROFILE="" \
             ENABLE_HARDENED_RUNTIME=YES \
