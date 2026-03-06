@@ -1,4 +1,4 @@
-.PHONY: setup lint fix build release dmg clean
+.PHONY: setup lint fix build release dmg tag clean
 
 # One-time setup: installs SwiftLint and git hooks
 setup:
@@ -25,6 +25,19 @@ release:
 dmg:
 	@chmod +x Scripts/build-dmg.sh
 	@./Scripts/build-dmg.sh
+
+# Tag and push a release (reads version from Xcode project)
+tag:
+	@VERSION=$$(grep 'MARKETING_VERSION' QuotaBar.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]') && \
+	if git rev-parse "v$$VERSION" >/dev/null 2>&1; then \
+		echo "❌ Tag v$$VERSION already exists. Bump MARKETING_VERSION in Xcode first."; \
+		exit 1; \
+	fi && \
+	echo "🏷  Tagging v$$VERSION..." && \
+	git tag "v$$VERSION" && \
+	git push origin "v$$VERSION" && \
+	echo "✅ Pushed v$$VERSION — GitHub Actions will build the release" && \
+	echo "   👉 https://github.com/ayangabryl/QuotaBar/releases"
 
 # Clean build artifacts
 clean:
