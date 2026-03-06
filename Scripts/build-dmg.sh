@@ -48,16 +48,33 @@ fi
 
 if [[ "$SKIP_BUILD" == false ]]; then
     echo "🔨 Building ${APP_NAME} (${CONFIG})..."
-    xcodebuild \
-        -scheme "$SCHEME" \
-        -configuration "$CONFIG" \
-        -derivedDataPath "${BUILD_DIR}/DerivedData" \
-        -arch arm64 -arch x86_64 \
-        ONLY_ACTIVE_ARCH=NO \
-        CODE_SIGN_IDENTITY="-" \
-        CODE_SIGNING_REQUIRED=NO \
-        CODE_SIGNING_ALLOWED=NO \
-        clean build 2>&1 | tail -3
+
+    # Use Developer ID signing if available (CI), otherwise ad-hoc for local dev
+    if [[ -n "${CODE_SIGN_IDENTITY:-}" && -n "${TEAM_ID:-}" ]]; then
+        echo "🔐 Code signing with: ${CODE_SIGN_IDENTITY}"
+        xcodebuild \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIG" \
+            -derivedDataPath "${BUILD_DIR}/DerivedData" \
+            -arch arm64 -arch x86_64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
+            DEVELOPMENT_TEAM="${TEAM_ID}" \
+            CODE_SIGN_STYLE="Manual" \
+            clean build 2>&1 | tail -3
+    else
+        echo "⚠️  No signing identity — using ad-hoc signature (local dev)"
+        xcodebuild \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIG" \
+            -derivedDataPath "${BUILD_DIR}/DerivedData" \
+            -arch arm64 -arch x86_64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            clean build 2>&1 | tail -3
+    fi
 
     echo "✅ Build succeeded"
 else
@@ -105,6 +122,12 @@ cp "${ICON_SRC}/icon_512x512.png"   "${ICON_DIR}/icon_512x512.png"
 cp "${ICON_SRC}/icon_1024x1024.png" "${ICON_DIR}/icon_512x512@2x.png"
 iconutil -c icns "$ICON_DIR" -o "$ICNS_PATH"
 
+# Build codesign flag for the DMG itself
+DMG_CODESIGN_FLAGS=()
+if [[ -n "${CODE_SIGN_IDENTITY:-}" ]]; then
+    DMG_CODESIGN_FLAGS+=(--codesign "${CODE_SIGN_IDENTITY}")
+fi
+
 create-dmg \
     --volname "${APP_NAME}" \
     --volicon "$ICNS_PATH" \
@@ -117,6 +140,7 @@ create-dmg \
     --icon ".VolumeIcon.icns" 999 999 \
     --text-size 14 \
     --no-internet-enable \
+    "${DMG_CODESIGN_FLAGS[@]}" \
     "$DMG_PATH" \
     "$DMG_DIR"
 
