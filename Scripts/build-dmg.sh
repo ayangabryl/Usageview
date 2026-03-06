@@ -54,6 +54,9 @@ if [[ "$SKIP_BUILD" == false ]]; then
         -derivedDataPath "${BUILD_DIR}/DerivedData" \
         -arch arm64 -arch x86_64 \
         ONLY_ACTIVE_ARCH=NO \
+        CODE_SIGN_IDENTITY="-" \
+        CODE_SIGNING_REQUIRED=NO \
+        CODE_SIGNING_ALLOWED=NO \
         clean build 2>&1 | tail -3
 
     echo "✅ Build succeeded"
