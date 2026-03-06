@@ -110,6 +110,36 @@ Open a PR with:
 - What data it tracks
 - How authentication works
 
+## Commit Messages
+
+We use [Conventional Commits](https://www.conventionalcommits.org/). The commit-msg hook enforces this automatically.
+
+**Format:** `type(scope): description`
+
+| Type | When to use |
+|:-----|:------------|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `docs` | Documentation only |
+| `style` | Code style (formatting, no logic change) |
+| `refactor` | Code change that neither fixes a bug nor adds a feature |
+| `test` | Adding or updating tests |
+| `chore` | Maintenance (deps, configs, scripts) |
+| `ci` | CI/CD changes |
+| `perf` | Performance improvement |
+| `build` | Build system changes |
+
+**Scope** is optional — use the provider name or area (e.g. `claude`, `copilot`, `ui`, `auth`).
+
+**Examples:**
+```
+feat(claude): add 5-hour rate window tracking
+fix(copilot): handle expired OAuth token gracefully
+docs: update contributing guide
+refactor(services): extract shared auth logic
+chore: bump SwiftLint to 0.55
+```
+
 ## Code Style
 
 - We use **SwiftLint** — the config is in `.swiftlint.yml`

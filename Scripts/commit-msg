@@ -1,0 +1,36 @@
+#!/bin/bash
+# Git commit-msg hook for QuotaBar
+# Enforces Conventional Commits format:
+#   type(scope): description
+#
+# Valid types: feat, fix, docs, style, refactor, test, chore, ci, perf, build
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
+
+# Skip merge commits
+if echo "$COMMIT_MSG" | grep -qE '^Merge'; then
+    exit 0
+fi
+
+# Conventional Commits pattern
+PATTERN='^(feat|fix|docs|style|refactor|test|chore|ci|perf|build)(\(.+\))?(!)?: .{1,}'
+
+if ! echo "$COMMIT_MSG" | grep -qE "$PATTERN"; then
+    echo ""
+    echo "❌ Commit message does not follow Conventional Commits format."
+    echo ""
+    echo "Expected:  type(scope): description"
+    echo ""
+    echo "Types:     feat, fix, docs, style, refactor, test, chore, ci, perf, build"
+    echo "Example:   feat(claude): add 5-hour rate window tracking"
+    echo "Example:   fix: resolve OAuth token refresh issue"
+    echo "Example:   docs: update contributing guide"
+    echo ""
+    echo "See: https://www.conventionalcommits.org"
+    echo "Skip with: git commit --no-verify"
+    echo ""
+    exit 1
+fi
+
+exit 0
