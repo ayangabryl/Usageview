@@ -152,8 +152,15 @@ final class AccountStore {
                     accounts[index].usageLimit = usage.entitlement
                     accounts[index].currentUsage = usage.used
                     accounts[index].usageUnit = "premium requests"
+                    accounts[index].planName = usage.plan?.capitalized
                     if let reset = usage.resetDate {
                         accounts[index].resetDate = reset
+                    }
+                    // Store chat quota
+                    if let chatPct = usage.chatPercentRemaining {
+                        accounts[index].chatPercentRemaining = chatPct
+                        accounts[index].chatLimit = usage.chatEntitlement
+                        accounts[index].chatUsage = max(0, 100 - chatPct)
                     }
                     save()
                 }
@@ -167,30 +174,43 @@ final class AccountStore {
                     accounts[index].usageUnit = valid ? "Connected" : "Inactive"
                     save()
                 }
-            } else if let usage = await claudeUsage.fetchUsage(for: account.id) {
-                if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-                    // Store both windows (API returns percentages directly, e.g. 31.0 = 31%)
-                    accounts[index].fiveHourUsage = usage.fiveHourUtilization
-                    accounts[index].fiveHourResetDate = usage.fiveHourResetsAt
-                    accounts[index].sevenDayUsage = usage.sevenDayUtilization
-                    accounts[index].sevenDayResetDate = usage.sevenDayResetsAt
+            } else {
+                // Fetch usage
+                let usage = await claudeUsage.fetchUsage(for: account.id)
 
-                    // Show the binding constraint (whichever window is fuller)
-                    if usage.sevenDayUtilization >= usage.fiveHourUtilization {
-                        accounts[index].currentUsage = usage.sevenDayUtilization
-                        if let reset = usage.sevenDayResetsAt {
-                            accounts[index].resetDate = reset
+                if let usage {
+                    if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+                        // Store both windows (API returns percentages directly, e.g. 31.0 = 31%)
+                        accounts[index].fiveHourUsage = usage.fiveHourUtilization
+                        accounts[index].fiveHourResetDate = usage.fiveHourResetsAt
+                        accounts[index].sevenDayUsage = usage.sevenDayUtilization
+                        accounts[index].sevenDayResetDate = usage.sevenDayResetsAt
+
+                        // Show the binding constraint (whichever window is fuller)
+                        if usage.sevenDayUtilization >= usage.fiveHourUtilization {
+                            accounts[index].currentUsage = usage.sevenDayUtilization
+                            if let reset = usage.sevenDayResetsAt {
+                                accounts[index].resetDate = reset
+                            }
+                        } else {
+                            accounts[index].currentUsage = usage.fiveHourUtilization
+                            if let reset = usage.fiveHourResetsAt {
+                                accounts[index].resetDate = reset
+                            }
                         }
-                    } else {
-                        accounts[index].currentUsage = usage.fiveHourUtilization
-                        if let reset = usage.fiveHourResetsAt {
-                            accounts[index].resetDate = reset
+                        accounts[index].usageLimit = 100
+                        accounts[index].usageUnit = "% used"
+
+                        // Plan tier from usage response
+                        if let plan = usage.planTier {
+                            accounts[index].planName = plan
+                        }
+                        if let org = usage.organizationName {
+                            accounts[index].organizationName = org
                         }
                     }
-                    accounts[index].usageLimit = 100
-                    accounts[index].usageUnit = "% used"
-                    save()
                 }
+                save()
             }
 
         case .chatgpt:
@@ -204,6 +224,7 @@ final class AccountStore {
             } else if let status = await openaiUsage.fetchStatus(for: account.id) {
                 if let index = accounts.firstIndex(where: { $0.id == account.id }) {
                     accounts[index].usageUnit = status.planName
+                    accounts[index].planName = status.planName
                     save()
                 }
             }
@@ -211,7 +232,28 @@ final class AccountStore {
         case .kimi:
             if let usage = await kimiUsage.fetchUsage(for: account.id) {
                 if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-                    accounts[index].usageUnit = usage.isActive ? "Connected" : "Inactive"
+                    if usage.hasQuotaData {
+                        // Real billing data from Kimi API
+                        accounts[index].kimiWeeklyUsed = usage.weeklyUsed
+                        accounts[index].kimiWeeklyLimit = usage.weeklyLimit
+                        accounts[index].kimiWeeklyResetDate = usage.weeklyResetDate
+                        accounts[index].kimiRateLimitUsed = usage.rateLimitUsed
+                        accounts[index].kimiRateLimitMax = usage.rateLimitMax
+                        accounts[index].kimiRateLimitResetDate = usage.rateLimitResetDate
+
+                        // Use weekly quota as primary usage
+                        let weeklyPct = usage.weeklyLimit > 0
+                            ? (usage.weeklyUsed / usage.weeklyLimit) * 100
+                            : 0
+                        accounts[index].currentUsage = weeklyPct
+                        accounts[index].usageLimit = 100
+                        accounts[index].usageUnit = "% used"
+                        if let reset = usage.weeklyResetDate {
+                            accounts[index].resetDate = reset
+                        }
+                    } else {
+                        accounts[index].usageUnit = usage.isActive ? "Connected" : "Inactive"
+                    }
                     save()
                 }
             }
@@ -224,6 +266,7 @@ final class AccountStore {
                             ? "\(status.modelCount) models · Pro"
                             : "\(status.modelCount) models"
                         accounts[index].usageUnit = label
+                        accounts[index].planName = status.hasProModels ? "Pro" : "Free"
                     } else {
                         accounts[index].usageUnit = "Inactive"
                     }

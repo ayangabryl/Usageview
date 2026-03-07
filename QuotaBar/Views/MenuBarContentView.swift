@@ -4,6 +4,7 @@ import AppKit
 struct MenuBarContentView: View {
     @Bindable var store: AccountStore
     @State private var screen: Screen = .main
+    @State private var screenHistory: [Screen] = []
     @State private var renamingAccountId: UUID?
     @State private var renameText: String = ""
 
@@ -148,7 +149,7 @@ struct MenuBarContentView: View {
             // Footer: Add + Quit
             HStack {
                 Button {
-                    screen = .pickService
+                    navigate(to: .pickService)
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus.circle.fill")
@@ -187,12 +188,12 @@ struct MenuBarContentView: View {
                 onConnect: {
                     switch account.serviceType {
                     case .claude:
-                        screen = account.authMethod == .apiKey ? .connectClaudeAPIKey(account.id) : .connectClaude(account.id)
-                    case .copilot: screen = .connectGitHub(account.id)
+                        navigate(to: account.authMethod == .apiKey ? .connectClaudeAPIKey(account.id) : .connectClaude(account.id))
+                    case .copilot: navigate(to: .connectGitHub(account.id))
                     case .chatgpt:
-                        screen = account.authMethod == .apiKey ? .connectOpenAIAPIKey(account.id) : .connectOpenAI(account.id)
-                    case .gemini: screen = .connectGemini(account.id)
-                    case .kimi: screen = .connectKimi(account.id)
+                        navigate(to: account.authMethod == .apiKey ? .connectOpenAIAPIKey(account.id) : .connectOpenAI(account.id))
+                    case .gemini: navigate(to: .connectGemini(account.id))
+                    case .kimi: navigate(to: .connectKimi(account.id))
                     }
                 },
                 onRefresh: { Task { await store.refreshAccount(account) } },
@@ -202,7 +203,7 @@ struct MenuBarContentView: View {
                 },
                 onDisconnect: { store.disconnectAccount(id: account.id) },
                 onRemove: { store.removeAccount(id: account.id) },
-                onTap: { screen = .accountDetail(account.id) },
+                onTap: { navigate(to: .accountDetail(account.id)) },
                 showWeeklyLimit: store.showWeeklyLimit
             )
         } else {
@@ -215,12 +216,12 @@ struct MenuBarContentView: View {
                 onConnect: {
                     switch account.serviceType {
                     case .claude:
-                        screen = account.authMethod == .apiKey ? .connectClaudeAPIKey(account.id) : .connectClaude(account.id)
-                    case .copilot: screen = .connectGitHub(account.id)
+                        navigate(to: account.authMethod == .apiKey ? .connectClaudeAPIKey(account.id) : .connectClaude(account.id))
+                    case .copilot: navigate(to: .connectGitHub(account.id))
                     case .chatgpt:
-                        screen = account.authMethod == .apiKey ? .connectOpenAIAPIKey(account.id) : .connectOpenAI(account.id)
-                    case .gemini: screen = .connectGemini(account.id)
-                    case .kimi: screen = .connectKimi(account.id)
+                        navigate(to: account.authMethod == .apiKey ? .connectOpenAIAPIKey(account.id) : .connectOpenAI(account.id))
+                    case .gemini: navigate(to: .connectGemini(account.id))
+                    case .kimi: navigate(to: .connectKimi(account.id))
                     }
                 },
                 onRefresh: { Task { await store.refreshAccount(account) } },
@@ -230,7 +231,7 @@ struct MenuBarContentView: View {
                 },
                 onDisconnect: { store.disconnectAccount(id: account.id) },
                 onRemove: { store.removeAccount(id: account.id) },
-                onTap: { screen = .accountDetail(account.id) },
+                onTap: { navigate(to: .accountDetail(account.id)) },
                 showWeeklyLimit: store.showWeeklyLimit
             )
         }
@@ -256,7 +257,7 @@ struct MenuBarContentView: View {
     private var pickServiceView: some View {
         VStack(spacing: 0) {
             navHeader(title: "Add Account") {
-                screen = .main
+                goBack()
             }
 
             VStack(spacing: 8) {
@@ -265,13 +266,13 @@ struct MenuBarContentView: View {
                         if type.supportsMultipleAuthMethods {
                             // Show auth method picker before creating account
                             let account = store.addAccount(serviceType: type)
-                            screen = .pickAuthMethod(account.id, type)
+                            navigate(to: .pickAuthMethod(account.id, type))
                         } else {
                             let account = store.addAccount(serviceType: type, authMethod: type == .gemini || type == .kimi ? .apiKey : .oauth)
                             switch type {
-                            case .copilot: screen = .connectGitHub(account.id)
-                            case .gemini: screen = .connectGemini(account.id)
-                            case .kimi: screen = .connectKimi(account.id)
+                            case .copilot: navigate(to: .connectGitHub(account.id))
+                            case .gemini: navigate(to: .connectGemini(account.id))
+                            case .kimi: navigate(to: .connectKimi(account.id))
                             case .claude, .chatgpt: break // handled above
                             }
                         }
@@ -310,7 +311,7 @@ struct MenuBarContentView: View {
         VStack(spacing: 0) {
             navHeader(title: serviceType.displayName) {
                 store.removeAccount(id: accountId)
-                screen = .pickService
+                goBack()
             }
 
             VStack(spacing: 12) {
@@ -328,8 +329,8 @@ struct MenuBarContentView: View {
                             store.save()
                         }
                         switch serviceType {
-                        case .claude: screen = .connectClaude(accountId)
-                        case .chatgpt: screen = .connectOpenAI(accountId)
+                        case .claude: navigate(to: .connectClaude(accountId))
+                        case .chatgpt: navigate(to: .connectOpenAI(accountId))
                         default: break
                         }
                     } label: {
@@ -353,8 +354,8 @@ struct MenuBarContentView: View {
                             store.save()
                         }
                         switch serviceType {
-                        case .claude: screen = .connectClaudeAPIKey(accountId)
-                        case .chatgpt: screen = .connectOpenAIAPIKey(accountId)
+                        case .claude: navigate(to: .connectClaudeAPIKey(accountId))
+                        case .chatgpt: navigate(to: .connectOpenAIAPIKey(accountId))
                         default: break
                         }
                     } label: {
@@ -394,10 +395,10 @@ struct MenuBarContentView: View {
                             await store.refreshAccount(account)
                         }
                     }
-                    screen = .main
+                    goHome()
                 } else {
                     store.removeAccount(id: accountId)
-                    screen = .pickService
+                    goBack()
                 }
             }
         )
@@ -423,9 +424,9 @@ struct MenuBarContentView: View {
                             await store.refreshAccount(account)
                         }
                     }
-                    screen = .main
+                    goHome()
                 } else {
-                    screen = .pickAuthMethod(accountId, .claude)
+                    goBack()
                 }
             }
         )
@@ -451,9 +452,9 @@ struct MenuBarContentView: View {
                             await store.refreshAccount(account)
                         }
                     }
-                    screen = .main
+                    goHome()
                 } else {
-                    screen = .pickAuthMethod(accountId, .claude)
+                    goBack()
                 }
             }
         )
@@ -479,10 +480,18 @@ struct MenuBarContentView: View {
                             await store.refreshAccount(account)
                         }
                     }
-                    screen = .main
+                    goHome()
                 } else {
-                    screen = .pickAuthMethod(accountId, .chatgpt)
+                    goBack()
                 }
+            },
+            onSwitchToAPIKey: {
+                // Switch this account to API key auth method
+                if let index = store.accounts.firstIndex(where: { $0.id == accountId }) {
+                    store.accounts[index].authMethod = .apiKey
+                    store.save()
+                }
+                navigate(to: .connectOpenAIAPIKey(accountId))
             }
         )
     }
@@ -507,9 +516,9 @@ struct MenuBarContentView: View {
                             await store.refreshAccount(account)
                         }
                     }
-                    screen = .main
+                    goHome()
                 } else {
-                    screen = .pickAuthMethod(accountId, .chatgpt)
+                    goBack()
                 }
             }
         )
@@ -533,10 +542,10 @@ struct MenuBarContentView: View {
                             await store.refreshAccount(account)
                         }
                     }
-                    screen = .main
+                    goHome()
                 } else {
                     store.removeAccount(id: accountId)
-                    screen = .pickService
+                    goBack()
                 }
             }
         )
@@ -560,10 +569,10 @@ struct MenuBarContentView: View {
                             await store.refreshAccount(account)
                         }
                     }
-                    screen = .main
+                    goHome()
                 } else {
                     store.removeAccount(id: accountId)
-                    screen = .pickService
+                    goBack()
                 }
             }
         )
@@ -591,6 +600,27 @@ struct MenuBarContentView: View {
         .padding(.bottom, 12)
     }
 
+    /// Navigate to a new screen, pushing current screen onto history
+    private func navigate(to newScreen: Screen) {
+        screenHistory.append(screen)
+        screen = newScreen
+    }
+
+    /// Go back to the previous screen in history, or main if no history
+    private func goBack() {
+        if let prev = screenHistory.popLast() {
+            screen = prev
+        } else {
+            screen = .main
+        }
+    }
+
+    /// Go back to main, clearing all history
+    private func goHome() {
+        screenHistory.removeAll()
+        screen = .main
+    }
+
     // MARK: - Account Detail View
 
     private func accountDetailView(accountId: UUID) -> some View {
@@ -598,7 +628,7 @@ struct MenuBarContentView: View {
 
         return VStack(spacing: 0) {
             navHeader(title: "Details") {
-                screen = .main
+                goBack()
             }
 
             if let account {
@@ -640,17 +670,23 @@ struct MenuBarContentView: View {
                                 if account.serviceType == .claude && account.authMethod == .oauth {
                                     // Claude OAuth: always show dual windows
                                     detailRateRow(
-                                        label: "Hourly limit",
+                                        label: "5-hour limit",
                                         usage: account.fiveHourUsage ?? account.currentUsage,
-                                        resetDate: account.fiveHourResetDate ?? (account.fiveHourUsage == nil ? nil : account.resetDate),
+                                        subtitle: account.fiveHourResetDate == nil && account.fiveHourUsage != nil
+                                            ? "\(Int(account.fiveHourUsage ?? 0))% of 5h capacity used"
+                                            : nil,
+                                        resetDate: account.fiveHourResetDate,
                                         accentColor: account.accentColor,
                                         maxResetHours: 6
                                     )
 
                                     detailRateRow(
-                                        label: "Weekly limit",
+                                        label: "7-day limit",
                                         usage: account.sevenDayUsage ?? account.currentUsage,
-                                        resetDate: account.sevenDayResetDate ?? (account.sevenDayUsage == nil ? nil : account.resetDate),
+                                        subtitle: account.sevenDayResetDate == nil && account.sevenDayUsage != nil
+                                            ? "\(Int(account.sevenDayUsage ?? 0))% of weekly capacity used"
+                                            : nil,
+                                        resetDate: account.sevenDayResetDate,
                                         accentColor: account.accentColor,
                                         maxResetHours: 192
                                     )
@@ -676,6 +712,75 @@ struct MenuBarContentView: View {
                                     .toggleStyle(.switch)
                                     .controlSize(.mini)
                                     .padding(.top, 4)
+
+                                } else if account.serviceType == .copilot {
+                                    // Copilot: premium requests + chat quota
+                                    detailRateRow(
+                                        label: "Premium Requests",
+                                        usage: account.usageLimit > 0
+                                            ? (account.currentUsage / account.usageLimit) * 100
+                                            : 0,
+                                        subtitle: "\(Int(account.currentUsage)) / \(Int(account.usageLimit)) used",
+                                        resetDate: account.resetDate,
+                                        accentColor: account.accentColor,
+                                        maxResetHours: 792 // ~33 days for monthly reset
+                                    )
+
+                                    if account.hasCopilotDualQuotas {
+                                        detailRateRow(
+                                            label: "Chat Completions",
+                                            usage: account.chatUsage ?? 0,
+                                            subtitle: account.chatLimit.map {
+                                                "\(Int(max(0, $0 * (account.chatPercentRemaining ?? 0) / 100))) / \(Int($0)) remaining"
+                                            },
+                                            resetDate: account.resetDate,
+                                            accentColor: account.accentColor,
+                                            maxResetHours: 792
+                                        )
+                                    }
+
+                                    // Toggle to show/hide both quotas in main view
+                                    Toggle(isOn: Binding(
+                                        get: { store.showWeeklyLimit },
+                                        set: { newValue in
+                                            store.showWeeklyLimit = newValue
+                                            UserDefaults.standard.set(newValue, forKey: "showWeeklyLimit")
+                                        }
+                                    )) {
+                                        Text("Show all quotas in main view")
+                                            .font(.caption)
+                                    }
+                                    .toggleStyle(.switch)
+                                    .controlSize(.mini)
+                                    .padding(.top, 4)
+
+                                } else if account.hasKimiBilling {
+                                    // Kimi billing: weekly quota + rate limit
+                                    let weeklyPct = (account.kimiWeeklyLimit ?? 0) > 0
+                                        ? ((account.kimiWeeklyUsed ?? 0) / (account.kimiWeeklyLimit ?? 1)) * 100
+                                        : 0
+
+                                    detailRateRow(
+                                        label: "Weekly Quota",
+                                        usage: weeklyPct,
+                                        subtitle: "\(Int(account.kimiWeeklyUsed ?? 0)) / \(Int(account.kimiWeeklyLimit ?? 0)) requests",
+                                        resetDate: account.kimiWeeklyResetDate,
+                                        accentColor: account.accentColor,
+                                        maxResetHours: 192
+                                    )
+
+                                    if (account.kimiRateLimitMax ?? 0) > 0 {
+                                        let ratePct = ((account.kimiRateLimitUsed ?? 0) / (account.kimiRateLimitMax ?? 1)) * 100
+                                        detailRateRow(
+                                            label: "Rate Limit (5 min)",
+                                            usage: ratePct,
+                                            subtitle: "\(Int(account.kimiRateLimitUsed ?? 0)) / \(Int(account.kimiRateLimitMax ?? 0)) requests",
+                                            resetDate: account.kimiRateLimitResetDate,
+                                            accentColor: account.accentColor,
+                                            maxResetHours: 1
+                                        )
+                                    }
+
                                 } else if account.isStatusOnly {
                                     HStack(spacing: 6) {
                                         Circle()
@@ -730,6 +835,18 @@ struct MenuBarContentView: View {
                                         label: "Auth",
                                         value: account.authMethod == .oauth ? "OAuth" : "API Key"
                                     )
+                                    if let plan = account.planName {
+                                        Divider().padding(.horizontal, 10)
+                                        detailInfoRow(label: "Plan", value: plan)
+                                    }
+                                    if let org = account.organizationName {
+                                        Divider().padding(.horizontal, 10)
+                                        detailInfoRow(label: "Organization", value: org)
+                                    }
+                                    if let role = account.memberRole {
+                                        Divider().padding(.horizontal, 10)
+                                        detailInfoRow(label: "Role", value: role.capitalized)
+                                    }
                                     if let username = account.username {
                                         Divider().padding(.horizontal, 10)
                                         detailInfoRow(label: "Signed in as", value: username)
@@ -765,7 +882,7 @@ struct MenuBarContentView: View {
 
                                 Button {
                                     store.disconnectAccount(id: account.id)
-                                    screen = .main
+                                    goHome()
                                 } label: {
                                     HStack(spacing: 6) {
                                         Image(systemName: "person.badge.minus")
@@ -821,7 +938,7 @@ struct MenuBarContentView: View {
         return accent
     }
 
-    private func detailRateRow(label: String, usage: Double, resetDate: Date?, accentColor: Color, maxResetHours: Double = 192) -> some View {
+    private func detailRateRow(label: String, usage: Double, subtitle: String? = nil, resetDate: Date?, accentColor: Color, maxResetHours: Double = 192) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(label)
@@ -843,14 +960,24 @@ struct MenuBarContentView: View {
             }
             .frame(height: 8)
 
-            if Account.isResetReasonable(resetDate, maxHours: maxResetHours) {
-                HStack(spacing: 4) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 9))
-                    Text("Resets in \(Account.resetLabel(for: resetDate))")
+            HStack {
+                if let subtitle {
+                    Text(subtitle)
                         .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-                .foregroundStyle(.tertiary)
+
+                Spacer()
+
+                if Account.isResetReasonable(resetDate, maxHours: maxResetHours) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 9))
+                        Text("Resets in \(Account.resetLabel(for: resetDate))")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.tertiary)
+                }
             }
         }
         .padding(10)
@@ -1095,8 +1222,9 @@ struct OpenAIInlineConnectView: View {
     let authService: OpenAIAuthService
     let accountId: UUID
     let onDone: (OpenAIAccountInfo?) -> Void
-    @State private var started = false
+    var onSwitchToAPIKey: (() -> Void)? = nil
     @State private var copied = false
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack(spacing: 16) {
@@ -1138,28 +1266,93 @@ struct OpenAIInlineConnectView: View {
                 .tint(ServiceType.chatgpt.accentColor)
                 .controlSize(.small)
 
-                ProgressView()
-                    .controlSize(.small)
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Waiting for authorization...")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                Button {
+                    cancelFlow()
+                } label: {
+                    Text("Cancel")
+                        .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+
             } else if authService.isLoading {
                 ProgressView()
-                Text("Connecting...")
+                Text("Connecting to OpenAI...")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                if onSwitchToAPIKey != nil {
+                    Button {
+                        cancelFlow()
+                        onSwitchToAPIKey?()
+                    } label: {
+                        Text("Use API Key Instead")
+                            .font(.caption.weight(.medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(ServiceType.chatgpt.accentColor)
+                }
+
+                Button {
+                    cancelFlow()
+                } label: {
+                    Text("Cancel")
+                        .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+
+            } else if errorMessage != nil {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.title2)
+                    .foregroundStyle(.orange)
+
+                Text("OpenAI is blocking sign-in requests.\nUse an API key instead, or try again later.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+
+                if onSwitchToAPIKey != nil {
+                    Button {
+                        cancelFlow()
+                        onSwitchToAPIKey?()
+                    } label: {
+                        Text("Use API Key Instead")
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(ServiceType.chatgpt.accentColor)
+                    .padding(.horizontal, 16)
+                }
+
+                Button {
+                    startFlow()
+                } label: {
+                    Text("Try Again")
+                        .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
             } else {
                 Text("Sign in with your OpenAI account\nto connect ChatGPT.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 16)
-            }
 
-            if !started {
                 Button {
-                    started = true
-                    Task {
-                        let info = await authService.startDeviceFlow(for: accountId)
-                        onDone(info)
-                    }
+                    startFlow()
                 } label: {
                     Text("Sign in with OpenAI")
                         .font(.subheadline.weight(.medium))
@@ -1169,16 +1362,66 @@ struct OpenAIInlineConnectView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(ServiceType.chatgpt.accentColor)
                 .padding(.horizontal, 16)
+
+                if onSwitchToAPIKey != nil {
+                    Button {
+                        onSwitchToAPIKey?()
+                    } label: {
+                        Text("Use API Key Instead")
+                            .font(.caption.weight(.medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                }
             }
 
             Spacer().frame(height: 4)
         }
         .padding(.bottom, 12)
+        .onAppear {
+            // If a flow is already active for this account, just observe it.
+            // If this is the first time and no flow is running, auto-start.
+            if authService.isFlowActive(for: accountId) {
+                // Flow is running, view will observe userCode/isLoading
+            } else if authService.flowFinished {
+                // Flow finished while window was closed — consume result
+                let result = authService.consumeResult()
+                if result != nil {
+                    onDone(result)
+                } else {
+                    errorMessage = "failed"
+                }
+            }
+            // Otherwise show the "Sign in with OpenAI" button
+        }
+        .onChange(of: authService.flowFinished) { _, finished in
+            if finished {
+                let result = authService.consumeResult()
+                if result != nil {
+                    onDone(result)
+                } else {
+                    errorMessage = "failed"
+                }
+            }
+        }
+    }
+
+    private func startFlow() {
+        errorMessage = nil
+        authService.beginDeviceFlow(for: accountId)
+    }
+
+    private func cancelFlow() {
+        authService.cancelDeviceFlow()
+        errorMessage = nil
     }
 
     private var navHeader: some View {
         HStack(spacing: 8) {
-            Button { onDone(nil) } label: {
+            Button {
+                cancelFlow()
+                onDone(nil)
+            } label: {
                 Image(systemName: "chevron.left")
                     .font(.body.weight(.medium))
                     .frame(width: 28, height: 28)

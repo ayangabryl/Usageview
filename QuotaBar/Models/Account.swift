@@ -21,6 +21,26 @@ struct Account: Codable, Identifiable, Sendable {
     var sevenDayUsage: Double?
     var sevenDayResetDate: Date?
 
+    // Copilot chat quota (secondary)
+    var chatUsage: Double?
+    var chatLimit: Double?
+    var chatPercentRemaining: Double?
+
+    // Plan / tier label (Copilot, ChatGPT, Gemini, Kimi)
+    var planName: String?
+
+    // Organization / workspace info (Claude, etc.)
+    var organizationName: String?
+    var memberRole: String?
+
+    // Kimi billing data
+    var kimiWeeklyUsed: Double?
+    var kimiWeeklyLimit: Double?
+    var kimiWeeklyResetDate: Date?
+    var kimiRateLimitUsed: Double?
+    var kimiRateLimitMax: Double?
+    var kimiRateLimitResetDate: Date?
+
     init(id: UUID, serviceType: ServiceType, authMethod: AuthMethod = .oauth, label: String, currentUsage: Double, usageLimit: Double, usageUnit: String, resetDate: Date, username: String? = nil, avatarURL: String? = nil) {
         self.id = id
         self.serviceType = serviceType
@@ -50,13 +70,27 @@ struct Account: Codable, Identifiable, Sendable {
         fiveHourResetDate = try container.decodeIfPresent(Date.self, forKey: .fiveHourResetDate)
         sevenDayUsage = try container.decodeIfPresent(Double.self, forKey: .sevenDayUsage)
         sevenDayResetDate = try container.decodeIfPresent(Date.self, forKey: .sevenDayResetDate)
+        chatUsage = try container.decodeIfPresent(Double.self, forKey: .chatUsage)
+        chatLimit = try container.decodeIfPresent(Double.self, forKey: .chatLimit)
+        chatPercentRemaining = try container.decodeIfPresent(Double.self, forKey: .chatPercentRemaining)
+        planName = try container.decodeIfPresent(String.self, forKey: .planName)
+        organizationName = try container.decodeIfPresent(String.self, forKey: .organizationName)
+        memberRole = try container.decodeIfPresent(String.self, forKey: .memberRole)
+        kimiWeeklyUsed = try container.decodeIfPresent(Double.self, forKey: .kimiWeeklyUsed)
+        kimiWeeklyLimit = try container.decodeIfPresent(Double.self, forKey: .kimiWeeklyLimit)
+        kimiWeeklyResetDate = try container.decodeIfPresent(Date.self, forKey: .kimiWeeklyResetDate)
+        kimiRateLimitUsed = try container.decodeIfPresent(Double.self, forKey: .kimiRateLimitUsed)
+        kimiRateLimitMax = try container.decodeIfPresent(Double.self, forKey: .kimiRateLimitMax)
+        kimiRateLimitResetDate = try container.decodeIfPresent(Date.self, forKey: .kimiRateLimitResetDate)
     }
 
     /// Whether this account only shows connection status (no real usage tracking)
     var isStatusOnly: Bool {
         switch (serviceType, authMethod) {
-        case (.gemini, _), (.kimi, _): return true
+        case (.gemini, _): return true
         case (.claude, .apiKey), (.chatgpt, .apiKey): return true
+        case (.chatgpt, .oauth): return true  // No usage/quota API; only shows plan name
+        case (.kimi, _): return !hasKimiBilling  // Status-only until billing data loads
         default: return false
         }
     }
@@ -74,6 +108,16 @@ struct Account: Codable, Identifiable, Sendable {
     /// Whether this is a Claude OAuth account with dual rate windows
     var hasDualWindows: Bool {
         serviceType == .claude && authMethod == .oauth && fiveHourUsage != nil && sevenDayUsage != nil
+    }
+
+    /// Whether this Copilot account has both premium and chat quotas
+    var hasCopilotDualQuotas: Bool {
+        serviceType == .copilot && chatPercentRemaining != nil
+    }
+
+    /// Whether this Kimi account has billing data
+    var hasKimiBilling: Bool {
+        serviceType == .kimi && kimiWeeklyLimit != nil && kimiWeeklyLimit! > 0
     }
 
     /// Whether a reset date is plausible for a given rate window.

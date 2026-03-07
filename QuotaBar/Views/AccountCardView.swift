@@ -129,13 +129,15 @@ struct AccountCardView: View {
                     }
 
                     if showWeeklyLimit {
-                        // Show both windows, labeled by reset countdown
+                        // Show both windows, labeled
                         claudeRateRow(
+                            label: "5h",
                             usage: account.fiveHourUsage ?? 0,
                             resetDate: account.fiveHourResetDate
                         )
 
                         claudeRateRow(
+                            label: "7d",
                             usage: account.sevenDayUsage ?? 0,
                             resetDate: account.sevenDayResetDate
                         )
@@ -171,6 +173,65 @@ struct AccountCardView: View {
                                     .font(.caption)
                                     .foregroundStyle(.tertiary)
                             }
+                        }
+                    }
+                } else if account.hasCopilotDualQuotas && showWeeklyLimit {
+                    // Copilot: premium + chat quotas (shown when toggle is on)
+                    if isRefreshing {
+                        HStack {
+                            ProgressView()
+                                .controlSize(.mini)
+                            Spacer()
+                        }
+                    }
+
+                    copilotQuotaRow(
+                        label: "Premium",
+                        used: account.currentUsage,
+                        limit: account.usageLimit
+                    )
+
+                    copilotQuotaRow(
+                        label: "Chat",
+                        used: account.chatUsage ?? 0,
+                        limit: 100,
+                        isPercent: true
+                    )
+                } else if account.hasKimiBilling {
+                    // Kimi: weekly quota bar
+                    let weeklyPct = (account.kimiWeeklyLimit ?? 0) > 0
+                        ? min((account.kimiWeeklyUsed ?? 0) / (account.kimiWeeklyLimit ?? 1), 1.0)
+                        : 0
+
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(.primary.opacity(0.06))
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(kimiBarColor(weeklyPct))
+                                .frame(width: max(0, geo.size.width * weeklyPct))
+                        }
+                    }
+                    .frame(height: 5)
+
+                    HStack(spacing: 0) {
+                        if isRefreshing {
+                            ProgressView()
+                                .controlSize(.mini)
+                                .padding(.trailing, 6)
+                        }
+
+                        Text("\(Int(account.kimiWeeklyUsed ?? 0))/\(Int(account.kimiWeeklyLimit ?? 0)) weekly")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Spacer()
+
+                        if let reset = account.kimiWeeklyResetDate,
+                           reset.timeIntervalSince(.now) > 0 {
+                            Text("resets \(Account.resetLabel(for: reset))")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
                         }
                     }
                 } else {
@@ -236,8 +297,15 @@ struct AccountCardView: View {
         return account.accentColor
     }
 
-    private func claudeRateRow(usage: Double, resetDate: Date?) -> some View {
+    private func claudeRateRow(label: String? = nil, usage: Double, resetDate: Date?) -> some View {
         HStack(spacing: 8) {
+            if let label {
+                Text(label)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 18, alignment: .leading)
+            }
+
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 2.5)
@@ -263,6 +331,45 @@ struct AccountCardView: View {
                 Color.clear.frame(width: 42)
             }
         }
+    }
+
+    private func copilotQuotaRow(label: String, used: Double, limit: Double, isPercent: Bool = false) -> some View {
+        let pct = isPercent ? min(used / 100.0, 1.0) : (limit > 0 ? min(used / limit, 1.0) : 0)
+        return HStack(spacing: 8) {
+            Text(label)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(.tertiary)
+                .frame(width: 42, alignment: .leading)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2.5)
+                        .fill(.primary.opacity(0.08))
+                    RoundedRectangle(cornerRadius: 2.5)
+                        .fill(rateBarColor(pct * 100))
+                        .frame(width: max(0, geo.size.width * pct))
+                }
+            }
+            .frame(height: 4)
+
+            if isPercent {
+                Text("\(Int(used))%")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(used >= 100 ? .red : .secondary)
+                    .frame(width: 36, alignment: .trailing)
+            } else {
+                Text("\(Int(used))/\(Int(limit))")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(used >= limit ? .red : .secondary)
+                    .frame(width: 50, alignment: .trailing)
+            }
+        }
+    }
+
+    private func kimiBarColor(_ pct: Double) -> Color {
+        if pct >= 1.0 { return .red }
+        if pct >= 0.8 { return .orange }
+        return account.accentColor
     }
 }
 
@@ -408,6 +515,26 @@ struct CompactAccountRow: View {
                                     .fixedSize()
                             }
                         }
+                    } else if account.hasKimiBilling {
+                        // Kimi with billing data: show usage bar
+                        let weeklyPct = (account.kimiWeeklyLimit ?? 0) > 0
+                            ? min((account.kimiWeeklyUsed ?? 0) / (account.kimiWeeklyLimit ?? 1), 1.0)
+                            : 0
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(.primary.opacity(0.06))
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(compactKimiBarColor(weeklyPct))
+                                    .frame(width: max(0, geo.size.width * weeklyPct))
+                            }
+                        }
+                        .frame(maxWidth: 60, maxHeight: 4)
+
+                        Text("\(Int(account.kimiWeeklyUsed ?? 0))/\(Int(account.kimiWeeklyLimit ?? 0))")
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundStyle(weeklyPct >= 1.0 ? .red : .secondary)
+                            .fixedSize()
                     } else {
                         // Inline usage bar
                         GeometryReader { geo in
@@ -483,6 +610,12 @@ struct CompactAccountRow: View {
 
     private func compactRateBarColor(_ usage: Double) -> Color {
         let pct = usage / 100.0
+        if pct >= 1.0 { return .red }
+        if pct >= 0.8 { return .orange }
+        return account.accentColor
+    }
+
+    private func compactKimiBarColor(_ pct: Double) -> Color {
         if pct >= 1.0 { return .red }
         if pct >= 0.8 { return .orange }
         return account.accentColor

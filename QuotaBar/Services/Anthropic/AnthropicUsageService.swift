@@ -8,6 +8,9 @@ struct ClaudeUsageData: Sendable {
     var fiveHourResetsAt: Date?
     var sevenDayUtilization: Double
     var sevenDayResetsAt: Date?
+    // Extra metadata from usage response
+    var planTier: String?
+    var organizationName: String?
 }
 
 @MainActor
@@ -82,20 +85,58 @@ final class AnthropicUsageService: Sendable {
             return formatter.date(from: str) ?? formatterNoFrac.date(from: str)
         }
 
+        // Log all top-level keys for debugging
+        logger.info("Usage response keys: \(json.keys.sorted(), privacy: .public)")
+
         // API response: { "five_hour": { "utilization": 31.0, "resets_at": "..." }, "seven_day": { ... } }
         let fiveHour = json["five_hour"] as? [String: Any]
         let sevenDay = json["seven_day"] as? [String: Any]
 
-        guard fiveHour != nil || sevenDay != nil else {
-            logger.warning("Unknown usage response keys: \(json.keys.sorted())")
+        // Also try alternative key names
+        let fiveHourData = fiveHour
+            ?? json["5_hour"] as? [String: Any]
+            ?? json["hourly"] as? [String: Any]
+            ?? json["short_term"] as? [String: Any]
+        let sevenDayData = sevenDay
+            ?? json["7_day"] as? [String: Any]
+            ?? json["daily"] as? [String: Any]
+            ?? json["weekly"] as? [String: Any]
+            ?? json["long_term"] as? [String: Any]
+
+        if fiveHourData != nil {
+            logger.info("5-hour data keys: \(fiveHourData!.keys.sorted(), privacy: .public)")
+        }
+        if sevenDayData != nil {
+            logger.info("7-day data keys: \(sevenDayData!.keys.sorted(), privacy: .public)")
+        }
+
+        guard fiveHourData != nil || sevenDayData != nil else {
+            logger.warning("Unknown usage response keys: \(json.keys.sorted(), privacy: .public)")
             return nil
         }
 
+        // Extract plan/org metadata from top-level fields if present
+        let planTier = json["plan"] as? String
+            ?? json["tier"] as? String
+            ?? json["plan_tier"] as? String
+            ?? json["plan_type"] as? String
+            ?? (json["plan"] as? [String: Any])?["name"] as? String
+            ?? (json["plan"] as? [String: Any])?["tier"] as? String
+        let orgName = json["organization"] as? String
+            ?? json["organization_name"] as? String
+            ?? json["org_name"] as? String
+            ?? (json["organization"] as? [String: Any])?["name"] as? String
+
         return ClaudeUsageData(
-            fiveHourUtilization: fiveHour?["utilization"] as? Double ?? 0,
-            fiveHourResetsAt: parseDate(fiveHour?["resets_at"] as? String),
-            sevenDayUtilization: sevenDay?["utilization"] as? Double ?? 0,
-            sevenDayResetsAt: parseDate(sevenDay?["resets_at"] as? String)
+            fiveHourUtilization: fiveHourData?["utilization"] as? Double ?? 0,
+            fiveHourResetsAt: parseDate(fiveHourData?["resets_at"] as? String
+                ?? fiveHourData?["reset_at"] as? String),
+            sevenDayUtilization: sevenDayData?["utilization"] as? Double ?? 0,
+            sevenDayResetsAt: parseDate(sevenDayData?["resets_at"] as? String
+                ?? sevenDayData?["reset_at"] as? String),
+            planTier: planTier,
+            organizationName: orgName
         )
     }
+
 }

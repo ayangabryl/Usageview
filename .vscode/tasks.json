@@ -1,0 +1,50 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -5"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -5"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -5"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -5"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -8"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -5"
+		},
+		{
+			"label": "Build QuotaBar Errors",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep 'error:' | head -10"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -5"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
+		}
+	]
+}
