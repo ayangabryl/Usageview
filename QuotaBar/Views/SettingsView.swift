@@ -3,6 +3,7 @@ import ServiceManagement
 
 struct SettingsView: View {
     @Bindable var store: AccountStore
+    var sparkle: SparkleUpdater
 
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var autoRefreshInterval: Int = UserDefaults.standard.integer(forKey: "autoRefreshMinutes")
@@ -173,6 +174,20 @@ struct SettingsView: View {
 
     private var generalContent: some View {
         VStack(alignment: .leading, spacing: 16) {
+            // Menu Bar Icon Style
+            settingsRow(icon: "gauge.medium", title: "Icon Style", subtitle: "Choose how the menu bar gauge is rendered") {
+                Picker("", selection: Binding(
+                    get: { store.menuBarIconStyle },
+                    set: { store.menuBarIconStyle = $0 }
+                )) {
+                    ForEach(MenuBarIconStyle.allCases, id: \.self) { style in
+                        Text(style.displayName).tag(style)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 200)
+            }
+
             // Launch at Login
             settingsRow(icon: "power", title: "Launch at Login", subtitle: "Start Usage automatically when your Mac boots") {
                 Toggle("", isOn: $launchAtLogin)
@@ -239,6 +254,27 @@ struct SettingsView: View {
 
     private var advancedContent: some View {
         VStack(alignment: .leading, spacing: 16) {
+            // Check for Updates
+            settingsRow(icon: "arrow.triangle.2.circlepath", title: "Check for Updates", subtitle: "Download and install the latest version") {
+                Button("Check Now") {
+                    sparkle.checkForUpdates()
+                }
+                .controlSize(.small)
+                .disabled(!sparkle.canCheckForUpdates)
+            }
+
+            // Auto Updates
+            settingsRow(icon: "arrow.clockwise.circle", title: "Automatic Updates", subtitle: "Automatically check for and install updates") {
+                Toggle("", isOn: Binding(
+                    get: { sparkle.automaticallyChecksForUpdates },
+                    set: { sparkle.automaticallyChecksForUpdates = $0 }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
+
+            Divider()
+
             // Reset All Data
             settingsRow(icon: "trash", iconColor: .red, title: "Reset All Data", subtitle: "Remove all accounts, tokens, and cached data") {
                 Button("Reset…", role: .destructive) {
@@ -274,7 +310,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text("v1.0.0")
+                Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 10)

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 import os
 
 private let storeLogger = Logger(subsystem: "com.ayangabryl.usage", category: "AccountStore")
@@ -19,16 +20,46 @@ final class AccountStore {
     /// Incremented after every save to force SwiftUI re-render in MenuBarExtra
     var dataVersion: Int = 0
 
+    /// The account pinned to the menu bar icon. When set, the gauge tracks this account only.
+    var pinnedAccountId: UUID? {
+        didSet {
+            if let id = pinnedAccountId {
+                UserDefaults.standard.set(id.uuidString, forKey: "pinnedAccountId")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "pinnedAccountId")
+            }
+            dataVersion += 1
+        }
+    }
+
+    /// The menu bar icon style.
+    var menuBarIconStyle: MenuBarIconStyle = .dynamic {
+        didSet {
+            UserDefaults.standard.set(menuBarIconStyle.rawValue, forKey: "menuBarIconStyle")
+            dataVersion += 1
+        }
+    }
+
     let githubAuth: GitHubAuthService
     let claudeAuth: AnthropicAuthService
     let openaiAuth: OpenAIAuthService
     let geminiAuth: GeminiAuthService
     let kimiAuth: KimiAuthService
+    let cursorAuth: CursorAuthService
+    let openrouterAuth: OpenRouterAuthService
+    let kiroAuth: KiroAuthService
+    let augmentAuth: AugmentAuthService
+    let jetbrainsAuth: JetBrainsAuthService
     private let githubUsage: GitHubUsageService
     private let claudeUsage: AnthropicUsageService
     private let openaiUsage: OpenAIUsageService
     private let geminiUsage: GeminiUsageService
     private let kimiUsage: KimiUsageService
+    private let cursorUsage: CursorUsageService
+    private let openrouterUsage: OpenRouterUsageService
+    private let kiroUsage: KiroUsageService
+    private let augmentUsage: AugmentUsageService
+    private let jetbrainsUsage: JetBrainsUsageService
     private let storageKey = "accounts_data_v3"
 
     init() {
@@ -37,21 +68,44 @@ final class AccountStore {
         let oa = OpenAIAuthService()
         let ge = GeminiAuthService()
         let ki = KimiAuthService()
+        let cu = CursorAuthService()
+        let or = OpenRouterAuthService()
+        let kr = KiroAuthService()
+        let au = AugmentAuthService()
+        let jb = JetBrainsAuthService()
         self.githubAuth = gh
         self.claudeAuth = cl
         self.openaiAuth = oa
         self.geminiAuth = ge
         self.kimiAuth = ki
+        self.cursorAuth = cu
+        self.openrouterAuth = or
+        self.kiroAuth = kr
+        self.augmentAuth = au
+        self.jetbrainsAuth = jb
         self.githubUsage = GitHubUsageService(authService: gh)
         self.claudeUsage = AnthropicUsageService(authService: cl)
         self.openaiUsage = OpenAIUsageService(authService: oa)
         self.geminiUsage = GeminiUsageService(authService: ge)
         self.kimiUsage = KimiUsageService(authService: ki)
+        self.cursorUsage = CursorUsageService(authService: cu)
+        self.openrouterUsage = OpenRouterUsageService(authService: or)
+        self.kiroUsage = KiroUsageService(authService: kr)
+        self.augmentUsage = AugmentUsageService(authService: au)
+        self.jetbrainsUsage = JetBrainsUsageService(authService: jb)
         if let mode = UserDefaults.standard.string(forKey: "viewMode"),
            let m = ViewMode(rawValue: mode) {
             viewMode = m
         }
         showWeeklyLimit = UserDefaults.standard.bool(forKey: "showWeeklyLimit")
+        if let pinStr = UserDefaults.standard.string(forKey: "pinnedAccountId"),
+           let pinId = UUID(uuidString: pinStr) {
+            pinnedAccountId = pinId
+        }
+        if let styleStr = UserDefaults.standard.string(forKey: "menuBarIconStyle"),
+           let style = MenuBarIconStyle(rawValue: styleStr) {
+            menuBarIconStyle = style
+        }
         load()
     }
 
@@ -98,6 +152,11 @@ final class AccountStore {
         case .chatgpt: openaiAuth.disconnect(accountId: id)
         case .gemini: geminiAuth.disconnect(accountId: id)
         case .kimi: kimiAuth.disconnect(accountId: id)
+        case .cursor: cursorAuth.disconnect(accountId: id)
+        case .openrouter: openrouterAuth.disconnect(accountId: id)
+        case .kiro: kiroAuth.disconnect(accountId: id)
+        case .augment: augmentAuth.disconnect(accountId: id)
+        case .jetbrainsAI: jetbrainsAuth.disconnect(accountId: id)
         }
         accounts.removeAll { $0.id == id }
         save()
@@ -112,6 +171,11 @@ final class AccountStore {
         case .chatgpt: openaiAuth.disconnect(accountId: id)
         case .gemini: geminiAuth.disconnect(accountId: id)
         case .kimi: kimiAuth.disconnect(accountId: id)
+        case .cursor: cursorAuth.disconnect(accountId: id)
+        case .openrouter: openrouterAuth.disconnect(accountId: id)
+        case .kiro: kiroAuth.disconnect(accountId: id)
+        case .augment: augmentAuth.disconnect(accountId: id)
+        case .jetbrainsAI: jetbrainsAuth.disconnect(accountId: id)
         }
         if let index = accounts.firstIndex(where: { $0.id == id }) {
             accounts[index].username = nil
@@ -307,6 +371,81 @@ final class AccountStore {
                     save()
                 }
             }
+
+        case .cursor:
+            if let usage = await cursorUsage.fetchUsage(for: account.id) {
+                if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+                    if usage.limitCents > 0 {
+                        accounts[index].currentUsage = usage.usedCents
+                        accounts[index].usageLimit = usage.limitCents
+                        accounts[index].usageUnit = "requests"
+                        accounts[index].planName = usage.planName
+                        if let reset = usage.billingCycleEnd {
+                            accounts[index].resetDate = reset
+                        }
+                    } else {
+                        accounts[index].usageUnit = usage.planName ?? "Connected"
+                    }
+                    save()
+                }
+            }
+
+        case .openrouter:
+            if let usage = await openrouterUsage.fetchUsage(for: account.id) {
+                if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+                    if usage.totalCredits > 0 {
+                        accounts[index].openRouterTotalCredits = usage.totalCredits
+                        accounts[index].openRouterTotalUsage = usage.totalUsage
+                        let remaining = max(0, usage.totalCredits - usage.totalUsage)
+                        let pct = (usage.totalUsage / usage.totalCredits) * 100
+                        accounts[index].currentUsage = pct
+                        accounts[index].usageLimit = 100
+                        accounts[index].usageUnit = String(format: "$%.2f remaining", remaining)
+                    } else {
+                        accounts[index].usageUnit = "Connected"
+                    }
+                    save()
+                }
+            }
+
+        case .kiro:
+            if let usage = await kiroUsage.fetchStatus(for: account.id) {
+                if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+                    accounts[index].usageUnit = usage.isActive ? "Connected" : "Inactive"
+                    save()
+                }
+            }
+
+        case .augment:
+            if let usage = await augmentUsage.fetchStatus(for: account.id) {
+                if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+                    accounts[index].usageUnit = usage.isActive ? "Connected" : "Inactive"
+                    save()
+                }
+            }
+
+        case .jetbrainsAI:
+            if let usage = await jetbrainsUsage.fetchUsage(for: account.id) {
+                if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+                    if usage.maximum > 0 {
+                        accounts[index].jetbrainsQuotaCurrent = usage.currentUsed
+                        accounts[index].jetbrainsQuotaMaximum = usage.maximum
+                        accounts[index].jetbrainsQuotaResetDate = usage.resetDate
+                        accounts[index].currentUsage = usage.usagePercent
+                        accounts[index].usageLimit = 100
+                        accounts[index].usageUnit = "% used"
+                        if let reset = usage.resetDate {
+                            accounts[index].resetDate = reset
+                        }
+                        if let ide = usage.ideName {
+                            accounts[index].planName = ide
+                        }
+                    } else {
+                        accounts[index].usageUnit = usage.isActive ? "Connected" : "Inactive"
+                    }
+                    save()
+                }
+            }
         }
     }
 
@@ -325,6 +464,11 @@ final class AccountStore {
         case .chatgpt: openaiAuth.isAuthenticated(for: account.id)
         case .gemini: geminiAuth.isAuthenticated(for: account.id)
         case .kimi: kimiAuth.isAuthenticated(for: account.id)
+        case .cursor: cursorAuth.isAuthenticated(for: account.id)
+        case .openrouter: openrouterAuth.isAuthenticated(for: account.id)
+        case .kiro: kiroAuth.isAuthenticated(for: account.id)
+        case .augment: augmentAuth.isAuthenticated(for: account.id)
+        case .jetbrainsAI: jetbrainsAuth.isAuthenticated(for: account.id)
         }
     }
 
@@ -355,5 +499,63 @@ final class AccountStore {
             let matching = accounts.filter { $0.serviceType == type }
             return matching.isEmpty ? nil : (type, matching)
         }
+    }
+
+    // MARK: - Dynamic Menu Bar Icon
+
+    /// The usage percentage (0–100) for a specific account, using the most relevant metric.
+    func accountUsagePercent(_ account: Account) -> Double {
+        if let fiveHour = account.fiveHourUsage {
+            return fiveHour
+        } else if account.usageLimit > 0 {
+            return account.usagePercentage * 100
+        }
+        return 0
+    }
+
+    /// The worst-off (highest usage) connected account's percentage (0–100).
+    var worstUsagePercent: Double? {
+        let connected = accounts.filter { isConnected(for: $0) && !$0.isStatusOnly }
+        guard !connected.isEmpty else { return nil }
+
+        var worst: Double = 0
+        for account in connected {
+            worst = max(worst, accountUsagePercent(account))
+        }
+        return worst
+    }
+
+    /// The percentage to display in the menu bar gauge.
+    /// If a specific account is pinned, use that account's usage; otherwise use worst-of-all.
+    var menuBarPercent: Double? {
+        if let pinnedId = pinnedAccountId,
+           let account = accounts.first(where: { $0.id == pinnedId }),
+           isConnected(for: account) {
+            return accountUsagePercent(account)
+        }
+        return worstUsagePercent
+    }
+
+    /// Whether the given account is pinned to the menu bar icon.
+    func isPinnedToMenuBar(_ account: Account) -> Bool {
+        pinnedAccountId == account.id
+    }
+
+    /// Pin or unpin an account from the menu bar icon.
+    func togglePinToMenuBar(_ account: Account) {
+        if pinnedAccountId == account.id {
+            pinnedAccountId = nil
+        } else {
+            pinnedAccountId = account.id
+        }
+    }
+
+    /// Generate the current dynamic menu bar icon
+    var menuBarIcon: NSImage {
+        MenuBarIconRenderer.icon(
+            percent: menuBarPercent,
+            style: menuBarIconStyle,
+            isStale: accounts.isEmpty || accounts.allSatisfy { !isConnected(for: $0) }
+        )
     }
 }

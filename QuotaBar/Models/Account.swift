@@ -41,6 +41,15 @@ struct Account: Codable, Identifiable, Sendable {
     var kimiRateLimitMax: Double?
     var kimiRateLimitResetDate: Date?
 
+    // OpenRouter credits
+    var openRouterTotalCredits: Double?
+    var openRouterTotalUsage: Double?
+
+    // JetBrains AI quota
+    var jetbrainsQuotaCurrent: Double?
+    var jetbrainsQuotaMaximum: Double?
+    var jetbrainsQuotaResetDate: Date?
+
     init(id: UUID, serviceType: ServiceType, authMethod: AuthMethod = .oauth, label: String, currentUsage: Double, usageLimit: Double, usageUnit: String, resetDate: Date, username: String? = nil, avatarURL: String? = nil) {
         self.id = id
         self.serviceType = serviceType
@@ -82,6 +91,11 @@ struct Account: Codable, Identifiable, Sendable {
         kimiRateLimitUsed = try container.decodeIfPresent(Double.self, forKey: .kimiRateLimitUsed)
         kimiRateLimitMax = try container.decodeIfPresent(Double.self, forKey: .kimiRateLimitMax)
         kimiRateLimitResetDate = try container.decodeIfPresent(Date.self, forKey: .kimiRateLimitResetDate)
+        openRouterTotalCredits = try container.decodeIfPresent(Double.self, forKey: .openRouterTotalCredits)
+        openRouterTotalUsage = try container.decodeIfPresent(Double.self, forKey: .openRouterTotalUsage)
+        jetbrainsQuotaCurrent = try container.decodeIfPresent(Double.self, forKey: .jetbrainsQuotaCurrent)
+        jetbrainsQuotaMaximum = try container.decodeIfPresent(Double.self, forKey: .jetbrainsQuotaMaximum)
+        jetbrainsQuotaResetDate = try container.decodeIfPresent(Date.self, forKey: .jetbrainsQuotaResetDate)
     }
 
     /// Whether this account only shows connection status (no real usage tracking)
@@ -91,6 +105,11 @@ struct Account: Codable, Identifiable, Sendable {
         case (.claude, .apiKey), (.chatgpt, .apiKey): return true
         case (.chatgpt, .oauth): return !hasChatGPTUsage  // Show usage when /wham/usage data is available
         case (.kimi, _): return !hasKimiBilling  // Status-only until billing data loads
+        case (.cursor, _): return !hasCursorUsage
+        case (.openrouter, _): return !hasOpenRouterCredits
+        case (.kiro, _): return true  // Status-only for now (CLI-based)
+        case (.augment, _): return true  // Status-only for now
+        case (.jetbrainsAI, _): return !hasJetBrainsQuota
         default: return false
         }
     }
@@ -123,6 +142,21 @@ struct Account: Codable, Identifiable, Sendable {
     /// Whether this ChatGPT account has real usage data from /wham/usage
     var hasChatGPTUsage: Bool {
         serviceType == .chatgpt && authMethod == .oauth && fiveHourUsage != nil
+    }
+
+    /// Whether this Cursor account has usage data
+    var hasCursorUsage: Bool {
+        serviceType == .cursor && usageLimit > 0
+    }
+
+    /// Whether this OpenRouter account has credits data
+    var hasOpenRouterCredits: Bool {
+        serviceType == .openrouter && openRouterTotalCredits != nil && openRouterTotalCredits! > 0
+    }
+
+    /// Whether this JetBrains AI account has quota data
+    var hasJetBrainsQuota: Bool {
+        serviceType == .jetbrainsAI && jetbrainsQuotaMaximum != nil && jetbrainsQuotaMaximum! > 0
     }
 
     /// Whether a reset date is plausible for a given rate window.

@@ -1,9 +1,11 @@
 import SwiftUI
+import AppKit
 
 @main
 struct QuotaBarApp: App {
     @State private var store = AccountStore()
     @State private var refreshTimer: Timer?
+    @State private var sparkle = SparkleUpdater()
 
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)
@@ -20,13 +22,13 @@ struct QuotaBarApp: App {
                     startAutoRefreshIfNeeded()
                 }
         } label: {
-            Image("MenuBarIcon")
-                .renderingMode(.template)
+            let _ = store.dataVersion  // Force re-render when data changes
+            Image(nsImage: store.menuBarIcon)
         }
         .menuBarExtraStyle(.window)
 
         Settings {
-            SettingsView(store: store)
+            SettingsView(store: store, sparkle: sparkle)
                 .frame(minWidth: 440, idealWidth: 440, minHeight: 480, idealHeight: 520)
         }
     }

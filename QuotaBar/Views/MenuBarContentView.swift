@@ -22,6 +22,11 @@ struct MenuBarContentView: View {
         case connectOpenAIAPIKey(UUID)
         case connectGemini(UUID)
         case connectKimi(UUID)
+        case connectCursor(UUID)
+        case connectOpenRouter(UUID)
+        case connectKiro(UUID)
+        case connectAugment(UUID)
+        case connectJetBrains(UUID)
         case accountDetail(UUID)
     }
 
@@ -48,6 +53,16 @@ struct MenuBarContentView: View {
                 geminiConnectView(accountId: id)
             case .connectKimi(let id):
                 kimiConnectView(accountId: id)
+            case .connectCursor(let id):
+                cursorConnectView(accountId: id)
+            case .connectOpenRouter(let id):
+                openrouterConnectView(accountId: id)
+            case .connectKiro(let id):
+                kiroConnectView(accountId: id)
+            case .connectAugment(let id):
+                augmentConnectView(accountId: id)
+            case .connectJetBrains(let id):
+                jetbrainsConnectView(accountId: id)
             case .accountDetail(let id):
                 accountDetailView(accountId: id)
             }
@@ -196,6 +211,11 @@ struct MenuBarContentView: View {
                         navigate(to: account.authMethod == .apiKey ? .connectOpenAIAPIKey(account.id) : .connectOpenAI(account.id))
                     case .gemini: navigate(to: .connectGemini(account.id))
                     case .kimi: navigate(to: .connectKimi(account.id))
+                    case .cursor: navigate(to: .connectCursor(account.id))
+                    case .openrouter: navigate(to: .connectOpenRouter(account.id))
+                    case .kiro: navigate(to: .connectKiro(account.id))
+                    case .augment: navigate(to: .connectAugment(account.id))
+                    case .jetbrainsAI: navigate(to: .connectJetBrains(account.id))
                     }
                 },
                 onRefresh: { Task { await store.refreshAccount(account) } },
@@ -206,6 +226,8 @@ struct MenuBarContentView: View {
                 onDisconnect: { store.disconnectAccount(id: account.id) },
                 onRemove: { store.removeAccount(id: account.id) },
                 onTap: { navigate(to: .accountDetail(account.id)) },
+                onPin: { store.togglePinToMenuBar(account) },
+                isPinned: store.isPinnedToMenuBar(account),
                 showWeeklyLimit: store.showWeeklyLimit
             )
         } else {
@@ -224,6 +246,11 @@ struct MenuBarContentView: View {
                         navigate(to: account.authMethod == .apiKey ? .connectOpenAIAPIKey(account.id) : .connectOpenAI(account.id))
                     case .gemini: navigate(to: .connectGemini(account.id))
                     case .kimi: navigate(to: .connectKimi(account.id))
+                    case .cursor: navigate(to: .connectCursor(account.id))
+                    case .openrouter: navigate(to: .connectOpenRouter(account.id))
+                    case .kiro: navigate(to: .connectKiro(account.id))
+                    case .augment: navigate(to: .connectAugment(account.id))
+                    case .jetbrainsAI: navigate(to: .connectJetBrains(account.id))
                     }
                 },
                 onRefresh: { Task { await store.refreshAccount(account) } },
@@ -234,6 +261,8 @@ struct MenuBarContentView: View {
                 onDisconnect: { store.disconnectAccount(id: account.id) },
                 onRemove: { store.removeAccount(id: account.id) },
                 onTap: { navigate(to: .accountDetail(account.id)) },
+                onPin: { store.togglePinToMenuBar(account) },
+                isPinned: store.isPinnedToMenuBar(account),
                 showWeeklyLimit: store.showWeeklyLimit
             )
         }
@@ -270,11 +299,16 @@ struct MenuBarContentView: View {
                             let account = store.addAccount(serviceType: type)
                             navigate(to: .pickAuthMethod(account.id, type))
                         } else {
-                            let account = store.addAccount(serviceType: type, authMethod: type == .gemini || type == .kimi ? .apiKey : .oauth)
+                            let account = store.addAccount(serviceType: type, authMethod: type == .copilot ? .oauth : .apiKey)
                             switch type {
                             case .copilot: navigate(to: .connectGitHub(account.id))
                             case .gemini: navigate(to: .connectGemini(account.id))
                             case .kimi: navigate(to: .connectKimi(account.id))
+                            case .cursor: navigate(to: .connectCursor(account.id))
+                            case .openrouter: navigate(to: .connectOpenRouter(account.id))
+                            case .kiro: navigate(to: .connectKiro(account.id))
+                            case .augment: navigate(to: .connectAugment(account.id))
+                            case .jetbrainsAI: navigate(to: .connectJetBrains(account.id))
                             case .claude, .chatgpt: break // handled above
                             }
                         }
@@ -558,6 +592,141 @@ struct MenuBarContentView: View {
     private func kimiConnectView(accountId: UUID) -> some View {
         KimiInlineConnectView(
             authService: store.kimiAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: info.name,
+                        avatarURL: nil
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    goHome()
+                } else {
+                    store.removeAccount(id: accountId)
+                    goBack()
+                }
+            }
+        )
+    }
+
+    // MARK: - Cursor Connect (Inline - Session Token)
+
+    private func cursorConnectView(accountId: UUID) -> some View {
+        CursorInlineConnectView(
+            authService: store.cursorAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: info.name ?? info.email,
+                        avatarURL: nil
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    goHome()
+                } else {
+                    store.removeAccount(id: accountId)
+                    goBack()
+                }
+            }
+        )
+    }
+
+    // MARK: - OpenRouter Connect (Inline - API Key)
+
+    private func openrouterConnectView(accountId: UUID) -> some View {
+        OpenRouterInlineConnectView(
+            authService: store.openrouterAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: info.name,
+                        avatarURL: nil
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    goHome()
+                } else {
+                    store.removeAccount(id: accountId)
+                    goBack()
+                }
+            }
+        )
+    }
+
+    // MARK: - Kiro Connect (Inline - API Key)
+
+    private func kiroConnectView(accountId: UUID) -> some View {
+        KiroInlineConnectView(
+            authService: store.kiroAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: info.name,
+                        avatarURL: nil
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    goHome()
+                } else {
+                    store.removeAccount(id: accountId)
+                    goBack()
+                }
+            }
+        )
+    }
+
+    // MARK: - Augment Connect (Inline - API Key)
+
+    private func augmentConnectView(accountId: UUID) -> some View {
+        AugmentInlineConnectView(
+            authService: store.augmentAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: info.name,
+                        avatarURL: nil
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    goHome()
+                } else {
+                    store.removeAccount(id: accountId)
+                    goBack()
+                }
+            }
+        )
+    }
+
+    // MARK: - JetBrains Connect (Inline - Auto-Detect)
+
+    private func jetbrainsConnectView(accountId: UUID) -> some View {
+        JetBrainsInlineConnectView(
+            authService: store.jetbrainsAuth,
             accountId: accountId,
             onDone: { info in
                 if let info {
@@ -1793,6 +1962,426 @@ struct GeminiInlineConnectView: View {
             .buttonStyle(.plain)
 
             Text("Connect Gemini")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - Cursor Inline Connect (Session Token)
+
+struct CursorInlineConnectView: View {
+    let authService: CursorAuthService
+    let accountId: UUID
+    let onDone: (CursorAccountInfo?) -> Void
+    @State private var token: String = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .cursor, avatarURL: nil, size: 48)
+
+            Text("Paste your Cursor session token\nfrom your browser cookies.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                SecureField("WorkosCursorSessionToken=...", text: $token)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            Button {
+                let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    errorMessage = "Please enter a session token."
+                    return
+                }
+                let info = authService.saveToken(trimmed, for: accountId)
+                onDone(info)
+            } label: {
+                Text("Connect")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ServiceType.cursor.accentColor)
+            .disabled(token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(.horizontal, 16)
+
+            Text("Open cursor.com → DevTools → Application\n→ Cookies → WorkosCursorSessionToken")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect Cursor")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - OpenRouter Inline Connect (API Key)
+
+struct OpenRouterInlineConnectView: View {
+    let authService: OpenRouterAuthService
+    let accountId: UUID
+    let onDone: (OpenRouterAccountInfo?) -> Void
+    @State private var apiKey: String = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .openrouter, avatarURL: nil, size: 48)
+
+            Text("Enter your OpenRouter API key\nto track credit usage.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                SecureField("sk-or-...", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            Button {
+                let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    errorMessage = "Please enter an API key."
+                    return
+                }
+                let info = authService.saveAPIKey(trimmed, for: accountId)
+                onDone(info)
+            } label: {
+                Text("Connect")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ServiceType.openrouter.accentColor)
+            .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(.horizontal, 16)
+
+            Link(destination: URL(string: "https://openrouter.ai/keys")!) {
+                Text("Get an API key →")
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+            }
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect OpenRouter")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - Kiro Inline Connect (API Key)
+
+struct KiroInlineConnectView: View {
+    let authService: KiroAuthService
+    let accountId: UUID
+    let onDone: (KiroAccountInfo?) -> Void
+    @State private var apiKey: String = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .kiro, avatarURL: nil, size: 48)
+
+            Text("Enter your Kiro API key\nto track usage.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                SecureField("API key...", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            Button {
+                let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    errorMessage = "Please enter an API key."
+                    return
+                }
+                let info = authService.saveAPIKey(trimmed, for: accountId)
+                onDone(info)
+            } label: {
+                Text("Connect")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ServiceType.kiro.accentColor)
+            .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(.horizontal, 16)
+
+            Text("Usage tracking is status-only for now.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect Kiro")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - Augment Inline Connect (API Key)
+
+struct AugmentInlineConnectView: View {
+    let authService: AugmentAuthService
+    let accountId: UUID
+    let onDone: (AugmentAccountInfo?) -> Void
+    @State private var apiKey: String = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .augment, avatarURL: nil, size: 48)
+
+            Text("Enter your Augment API key\nto track usage.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                SecureField("API key...", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            Button {
+                let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    errorMessage = "Please enter an API key."
+                    return
+                }
+                let info = authService.saveAPIKey(trimmed, for: accountId)
+                onDone(info)
+            } label: {
+                Text("Connect")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ServiceType.augment.accentColor)
+            .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(.horizontal, 16)
+
+            Text("Usage tracking is status-only for now.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect Augment")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - JetBrains Inline Connect (Auto-Detect)
+
+struct JetBrainsInlineConnectView: View {
+    let authService: JetBrainsAuthService
+    let accountId: UUID
+    let onDone: (JetBrainsAccountInfo?) -> Void
+    @State private var detecting: Bool = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .jetbrainsAI, avatarURL: nil, size: 48)
+
+            Text("QuotaBar can auto-detect your\nJetBrains IDE AI quota.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, 16)
+            }
+
+            Button {
+                detecting = true
+                errorMessage = nil
+                if let info = authService.autoEnable(for: accountId) {
+                    onDone(info)
+                } else {
+                    errorMessage = "No JetBrains IDE with AI Assistant found.\nMake sure a JetBrains IDE is installed."
+                    detecting = false
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    if detecting {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    Text(detecting ? "Detecting..." : "Auto-Detect IDE")
+                        .font(.subheadline.weight(.medium))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ServiceType.jetbrainsAI.accentColor)
+            .disabled(detecting)
+            .padding(.horizontal, 16)
+
+            Text("Reads AIAssistantQuotaManager2.xml\nfrom your IDE config folder.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect JetBrains AI")
                 .font(.headline)
 
             Spacer()
