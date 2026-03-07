@@ -5,11 +5,16 @@
     <link>https://raw.githubusercontent.com/ayangabryl/Usageview/main/appcast.xml</link>
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
-    <!-- 
-      To publish a new update:
-      1. Build and sign the DMG
-      2. Generate the signature: ./Sparkle/bin/sign_update Usageview-X.Y.Z.dmg
-      3. Add a new <item> below with the version, download URL, and signature
-    -->
+    <item>
+      <title>Version 1.1.5</title>
+      <pubDate>Sun, 08 Mar 2026 01:14:02 +0800</pubDate>
+      <sparkle:version>1</sparkle:version>
+      <sparkle:shortVersionString>1.1.5</sparkle:shortVersionString>
+      <enclosure
+        url="https://github.com/ayangabryl/Usageview/releases/download/v1.1.5/Usageview-1.1.5.dmg"
+        sparkle:edSignature="Q9g831i09KngdzPC83i1bGFLAfP+JvXdSh/X2x5dJ+e7Kk3fqSGFympLFqT0LKLfkPqw4l4jApoCBvtEh2VzDw=="
+        length="2605443"
+        type="application/octet-stream" />
+    </item>
   </channel>
 </rss>
