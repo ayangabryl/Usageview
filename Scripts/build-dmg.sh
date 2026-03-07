@@ -158,6 +158,35 @@ create-dmg \
     "$DMG_PATH" \
     "$DMG_DIR"
 
+# ── Step 4: Notarize (optional) ──────────────────────────────────────────────
+if [[ -n "${APPLE_ID:-}" && -n "${APPLE_APP_PASSWORD:-}" && -n "${TEAM_ID:-}" ]]; then
+    echo "📤 Submitting DMG for notarization..."
+    SUBMIT_OUTPUT=$(xcrun notarytool submit "$DMG_PATH" \
+        --apple-id "$APPLE_ID" \
+        --password "$APPLE_APP_PASSWORD" \
+        --team-id "$TEAM_ID" \
+        --wait 2>&1) || true
+
+    echo "$SUBMIT_OUTPUT"
+
+    SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | grep "id:" | head -1 | awk '{print $2}')
+
+    if echo "$SUBMIT_OUTPUT" | grep -q "status: Accepted"; then
+        echo "📎 Stapling notarization ticket..."
+        xcrun stapler staple "$DMG_PATH"
+        echo "✅ Notarization complete"
+    else
+        echo "❌ Notarization failed! Fetching log..."
+        xcrun notarytool log "$SUBMISSION_ID" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$TEAM_ID" 2>&1 || true
+        exit 1
+    fi
+else
+    echo "⚠️  Skipping notarization (APPLE_ID / APPLE_APP_PASSWORD / TEAM_ID not set)"
+fi
+
 echo ""
 echo "═══════════════════════════════════════════════════"
 echo "  ✅ DMG created successfully!"
