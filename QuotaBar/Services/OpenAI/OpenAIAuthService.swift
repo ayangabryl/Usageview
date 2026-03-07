@@ -83,7 +83,8 @@ final class OpenAIAuthService: Sendable {
 
         guard let (codeData, _) = try? await URLSession.shared.data(for: codeRequest),
               let codeJSON = try? JSONSerialization.jsonObject(with: codeData) as? [String: Any],
-              let uCode = codeJSON["user_code"] as? String
+              let uCode = codeJSON["user_code"] as? String,
+              let deviceAuthId = codeJSON["device_auth_id"] as? String
         else { return nil }
 
         userCode = uCode
@@ -94,10 +95,14 @@ final class OpenAIAuthService: Sendable {
         }
 
         // Step 3: Poll for authorization
-        let interval = codeJSON["interval"] as? Int ?? 5
+        let intervalStr = codeJSON["interval"] as? String
+        let intervalNum = codeJSON["interval"] as? Int
+        let interval = intervalNum ?? (Int(intervalStr ?? "") ?? 5)
         let tokenURL = URL(string: "\(issuer)/api/accounts/deviceauth/token")!
+        let startDate = Date()
+        let maxWait: TimeInterval = 15 * 60 // 15 minutes
 
-        while true {
+        while Date().timeIntervalSince(startDate) < maxWait {
             try? await Task.sleep(for: .seconds(interval))
 
             var tokenRequest = URLRequest(url: tokenURL)
@@ -105,11 +110,21 @@ final class OpenAIAuthService: Sendable {
             tokenRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             tokenRequest.setValue("application/json", forHTTPHeaderField: "Accept")
             tokenRequest.httpBody = try? JSONSerialization.data(withJSONObject: [
-                "client_id": clientId,
+                "device_auth_id": deviceAuthId,
                 "user_code": uCode
             ])
 
-            guard let (tokenData, _) = try? await URLSession.shared.data(for: tokenRequest),
+            guard let (tokenData, tokenResponse) = try? await URLSession.shared.data(for: tokenRequest)
+            else { continue }
+
+            let httpStatus = (tokenResponse as? HTTPURLResponse)?.statusCode ?? 0
+
+            // 403/404 = authorization still pending, keep polling
+            if httpStatus == 403 || httpStatus == 404 {
+                continue
+            }
+
+            guard httpStatus == 200,
                   let tokenJSON = try? JSONSerialization.jsonObject(with: tokenData) as? [String: Any]
             else { continue }
 
@@ -125,10 +140,12 @@ final class OpenAIAuthService: Sendable {
                 return info
             }
 
-            if let error = tokenJSON["error"] as? String {
-                if error == "authorization_pending" || error == "slow_down" { continue }
-                return nil
-            }
+            // Unexpected response
+            return nil
+        }
+
+        // Timed out
+        return nil
         }
     }
 
