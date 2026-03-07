@@ -7,13 +7,13 @@
     <language>en</language>
     <item>
       <title>Version 1.1.6</title>
-      <pubDate>Sun, 08 Mar 2026 02:05:33 +0800</pubDate>
+      <pubDate>Sun, 08 Mar 2026 02:19:36 +0800</pubDate>
       <sparkle:version>1</sparkle:version>
       <sparkle:shortVersionString>1.1.6</sparkle:shortVersionString>
       <enclosure
         url="https://github.com/ayangabryl/Usageview/releases/download/v1.1.6/Usageview-1.1.6.dmg"
-        sparkle:edSignature="Kc5pudgf13Lz8qk7TwRcbS57jjX/i2KS6TxQuotnEUd6LbxILCj+igvISz15xL5Ea1OjCEXXU3DPyHA43liXCw=="
-        length="2621249"
+        sparkle:edSignature="kWsepCB7QT6d9seEyMZKiDzxZKu0HOuBFCZwEl5dXrE+K7AosynVDlx5NvzDJlPNcoyKegYvTxm+/4hXJ/aKBQ=="
+        length="2621246"
         type="application/octet-stream" />
     </item>
   </channel>
