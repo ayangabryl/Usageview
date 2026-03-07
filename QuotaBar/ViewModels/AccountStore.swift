@@ -40,6 +40,16 @@ final class AccountStore {
         }
     }
 
+    /// Custom color for the "Colored" icon style. Stored as hex string.
+    var menuBarIconColor: Color = Color(red: 0.38, green: 0.52, blue: 1.0) {
+        didSet {
+            if let hex = menuBarIconColor.toHex() {
+                UserDefaults.standard.set(hex, forKey: "menuBarIconColor")
+            }
+            dataVersion += 1
+        }
+    }
+
     let githubAuth: GitHubAuthService
     let claudeAuth: AnthropicAuthService
     let openaiAuth: OpenAIAuthService
@@ -105,6 +115,9 @@ final class AccountStore {
         if let styleStr = UserDefaults.standard.string(forKey: "menuBarIconStyle"),
            let style = MenuBarIconStyle(rawValue: styleStr) {
             menuBarIconStyle = style
+        }
+        if let hex = UserDefaults.standard.string(forKey: "menuBarIconColor") {
+            menuBarIconColor = Color(hex: hex)
         }
         load()
     }
@@ -555,6 +568,7 @@ final class AccountStore {
         MenuBarIconRenderer.icon(
             percent: menuBarPercent,
             style: menuBarIconStyle,
+            customColor: menuBarIconStyle == .colored ? NSColor(menuBarIconColor) : nil,
             isStale: accounts.isEmpty || accounts.allSatisfy { !isConnected(for: $0) }
         )
     }

@@ -176,16 +176,26 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 16) {
             // Menu Bar Icon Style
             settingsRow(icon: "gauge.medium", title: "Icon Style", subtitle: "Choose how the menu bar gauge is rendered") {
-                Picker("", selection: Binding(
-                    get: { store.menuBarIconStyle },
-                    set: { store.menuBarIconStyle = $0 }
-                )) {
-                    ForEach(MenuBarIconStyle.allCases, id: \.self) { style in
-                        Text(style.displayName).tag(style)
+                HStack(spacing: 8) {
+                    if store.menuBarIconStyle == .colored {
+                        ColorPicker("", selection: Binding(
+                            get: { store.menuBarIconColor },
+                            set: { store.menuBarIconColor = $0 }
+                        ), supportsOpacity: false)
+                        .labelsHidden()
+                        .frame(width: 24, height: 24)
                     }
+                    Picker("", selection: Binding(
+                        get: { store.menuBarIconStyle },
+                        set: { store.menuBarIconStyle = $0 }
+                    )) {
+                        ForEach(MenuBarIconStyle.allCases, id: \.self) { style in
+                            Text(style.displayName).tag(style)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 200)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 200)
             }
 
             // Launch at Login

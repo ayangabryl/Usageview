@@ -29,7 +29,7 @@ enum MenuBarIconRenderer {
     ///   - percent: Fill percentage 0–100. `nil` = idle state.
     ///   - style: The icon style (white/colored/dynamic).
     ///   - isStale: Dims the icon when data is stale or errored.
-    static func icon(percent: Double?, style: MenuBarIconStyle = .dynamic, isStale: Bool = false) -> NSImage {
+    static func icon(percent: Double?, style: MenuBarIconStyle = .dynamic, customColor: NSColor? = nil, isStale: Bool = false) -> NSImage {
         let size = NSSize(width: 18, height: 18)
         let image = NSImage(size: size, flipped: false) { rect in
             NSColor.clear.setFill()
@@ -60,7 +60,8 @@ enum MenuBarIconRenderer {
             case .white:
                 trackColor = .white.withAlphaComponent(0.20 * opacity)
             case .colored:
-                trackColor = NSColor(red: 0.38, green: 0.52, blue: 1.0, alpha: 0.25 * opacity)
+                let base = customColor ?? NSColor(red: 0.38, green: 0.52, blue: 1.0, alpha: 1.0)
+                trackColor = base.withAlphaComponent(0.25 * opacity)
             case .dynamic:
                 trackColor = .labelColor.withAlphaComponent(0.15 * opacity)
             }
@@ -90,7 +91,8 @@ enum MenuBarIconRenderer {
             case .white:
                 fillColor = .white.withAlphaComponent(opacity)
             case .colored:
-                fillColor = NSColor(red: 0.38, green: 0.52, blue: 1.0, alpha: opacity)
+                let base = customColor ?? NSColor(red: 0.38, green: 0.52, blue: 1.0, alpha: 1.0)
+                fillColor = base.withAlphaComponent(opacity)
             case .dynamic:
                 if clamped >= 0.9 {
                     fillColor = .systemRed.withAlphaComponent(opacity)
