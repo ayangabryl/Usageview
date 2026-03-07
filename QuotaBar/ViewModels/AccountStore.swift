@@ -75,14 +75,11 @@ final class AccountStore {
 
     @discardableResult
     func addAccount(serviceType: ServiceType, authMethod: AuthMethod = .oauth) -> Account {
-        let existingCount = accounts.filter { $0.serviceType == serviceType }.count
-        let label = existingCount > 0 ? "Account \(existingCount + 1)" : ""
-
         let account = Account(
             id: UUID(),
             serviceType: serviceType,
             authMethod: authMethod,
-            label: label,
+            label: "",
             currentUsage: 0,
             usageLimit: serviceType.defaultLimit,
             usageUnit: serviceType.defaultUsageUnit,
