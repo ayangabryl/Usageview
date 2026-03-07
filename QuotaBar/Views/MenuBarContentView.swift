@@ -137,21 +137,13 @@ struct MenuBarContentView: View {
                 .padding(.vertical, 20)
                 .frame(maxWidth: .infinity)
             } else {
-                // Scrollable grouped account list
+                // Scrollable ordered account list
                 // Observe dataVersion to force re-render after refresh updates
                 let _ = store.dataVersion
                 ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(spacing: store.viewMode == .compact ? 1 : 4, pinnedViews: .sectionHeaders) {
-                        ForEach(store.groupedAccounts, id: \.0) { serviceType, accounts in
-                            Section {
-                                ForEach(accounts) { account in
-                                    accountView(for: account)
-                                }
-                            } header: {
-                                if store.groupedAccounts.count > 1 {
-                                    sectionHeader(for: serviceType, count: accounts.count)
-                                }
-                            }
+                    LazyVStack(spacing: store.viewMode == .compact ? 1 : 4) {
+                        ForEach(store.orderedAccounts) { account in
+                            accountView(for: account)
                         }
                     }
                     .padding(.horizontal, 10)
@@ -159,6 +151,7 @@ struct MenuBarContentView: View {
                 }
                 .frame(maxHeight: 440)
                 .scrollBounceBehavior(.basedOnSize)
+                .onAppear { store.ensureOrderIntegrity() }
             }
 
             Divider().padding(.vertical, 6)
@@ -227,7 +220,11 @@ struct MenuBarContentView: View {
                 onRemove: { store.removeAccount(id: account.id) },
                 onTap: { navigate(to: .accountDetail(account.id)) },
                 onPin: { store.togglePinToMenuBar(account) },
+                onMoveUp: { store.moveAccountUp(id: account.id) },
+                onMoveDown: { store.moveAccountDown(id: account.id) },
                 isPinned: store.isPinnedToMenuBar(account),
+                canMoveUp: store.canMoveUp(id: account.id),
+                canMoveDown: store.canMoveDown(id: account.id),
                 showWeeklyLimit: store.showWeeklyLimit
             )
         } else {
@@ -262,7 +259,11 @@ struct MenuBarContentView: View {
                 onRemove: { store.removeAccount(id: account.id) },
                 onTap: { navigate(to: .accountDetail(account.id)) },
                 onPin: { store.togglePinToMenuBar(account) },
+                onMoveUp: { store.moveAccountUp(id: account.id) },
+                onMoveDown: { store.moveAccountDown(id: account.id) },
                 isPinned: store.isPinnedToMenuBar(account),
+                canMoveUp: store.canMoveUp(id: account.id),
+                canMoveDown: store.canMoveDown(id: account.id),
                 showWeeklyLimit: store.showWeeklyLimit
             )
         }

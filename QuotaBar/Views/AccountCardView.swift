@@ -13,7 +13,11 @@ struct AccountCardView: View {
     var onRemove: () -> Void = {}
     var onTap: () -> Void = {}
     var onPin: () -> Void = {}
+    var onMoveUp: () -> Void = {}
+    var onMoveDown: () -> Void = {}
     var isPinned: Bool = false
+    var canMoveUp: Bool = false
+    var canMoveDown: Bool = false
     var showWeeklyLimit: Bool = false
 
     private var isRenaming: Bool { renamingId == account.id }
@@ -82,12 +86,16 @@ struct AccountCardView: View {
                     AccountMenuButton(
                         isConnected: isConnected,
                         isPinned: isPinned,
+                        canMoveUp: canMoveUp,
+                        canMoveDown: canMoveDown,
                         onRefresh: onRefresh,
                         onRename: {
                             renameText = account.label.isEmpty ? (account.username ?? "") : account.label
                             renamingId = account.id
                         },
                         onPin: onPin,
+                        onMoveUp: onMoveUp,
+                        onMoveDown: onMoveDown,
                         onDisconnect: onDisconnect,
                         onRemove: onRemove
                     )
@@ -428,7 +436,11 @@ struct CompactAccountRow: View {
     var onRemove: () -> Void = {}
     var onTap: () -> Void = {}
     var onPin: () -> Void = {}
+    var onMoveUp: () -> Void = {}
+    var onMoveDown: () -> Void = {}
     var isPinned: Bool = false
+    var canMoveUp: Bool = false
+    var canMoveDown: Bool = false
     var showWeeklyLimit: Bool = false
 
     private var isRenaming: Bool { renamingId == account.id }
@@ -573,12 +585,16 @@ struct CompactAccountRow: View {
                         isConnected: isConnected,
                         compact: true,
                         isPinned: isPinned,
+                        canMoveUp: canMoveUp,
+                        canMoveDown: canMoveDown,
                         onRefresh: onRefresh,
                         onRename: {
                             renameText = account.label.isEmpty ? (account.username ?? "") : account.label
                             renamingId = account.id
                         },
                         onPin: onPin,
+                        onMoveUp: onMoveUp,
+                        onMoveDown: onMoveDown,
                         onDisconnect: onDisconnect,
                         onRemove: onRemove
                     )
@@ -667,9 +683,13 @@ struct AccountMenuButton: View {
     let isConnected: Bool
     var compact: Bool = false
     var isPinned: Bool = false
+    var canMoveUp: Bool = false
+    var canMoveDown: Bool = false
     var onRefresh: () -> Void = {}
     var onRename: () -> Void = {}
     var onPin: () -> Void = {}
+    var onMoveUp: () -> Void = {}
+    var onMoveDown: () -> Void = {}
     var onDisconnect: () -> Void = {}
     var onRemove: () -> Void = {}
 
@@ -687,6 +707,19 @@ struct AccountMenuButton: View {
                     Label(isPinned ? "Unpin from Menu Bar" : "Pin to Menu Bar",
                           systemImage: isPinned ? "pin.slash.fill" : "pin.fill")
                 }
+            }
+            Divider()
+            if canMoveUp {
+                Button { onMoveUp() } label: {
+                    Label("Move Up", systemImage: "arrow.up")
+                }
+            }
+            if canMoveDown {
+                Button { onMoveDown() } label: {
+                    Label("Move Down", systemImage: "arrow.down")
+                }
+            }
+            if isConnected {
                 Divider()
                 Button { onDisconnect() } label: {
                     Label("Disconnect", systemImage: "person.crop.circle.badge.minus")

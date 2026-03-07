@@ -40,6 +40,15 @@ final class AccountStore {
         }
     }
 
+    /// Custom display order of accounts (by UUID). Persisted to UserDefaults.
+    var accountOrder: [UUID] = [] {
+        didSet {
+            let strings = accountOrder.map { $0.uuidString }
+            UserDefaults.standard.set(strings, forKey: "accountOrder")
+            dataVersion += 1
+        }
+    }
+
     /// Custom color for the "Colored" icon style. Stored as hex string.
     var menuBarIconColor: Color = Color(red: 0.38, green: 0.52, blue: 1.0) {
         didSet {
@@ -119,6 +128,9 @@ final class AccountStore {
         if let hex = UserDefaults.standard.string(forKey: "menuBarIconColor") {
             menuBarIconColor = Color(hex: hex)
         }
+        if let orderStrings = UserDefaults.standard.stringArray(forKey: "accountOrder") {
+            accountOrder = orderStrings.compactMap { UUID(uuidString: $0) }
+        }
         load()
     }
 
@@ -153,6 +165,7 @@ final class AccountStore {
             resetDate: .now
         )
         accounts.append(account)
+        accountOrder.append(account.id)
         save()
         return account
     }
@@ -172,6 +185,7 @@ final class AccountStore {
         case .jetbrainsAI: jetbrainsAuth.disconnect(accountId: id)
         }
         accounts.removeAll { $0.id == id }
+        accountOrder.removeAll { $0 == id }
         save()
     }
 
@@ -512,6 +526,56 @@ final class AccountStore {
             let matching = accounts.filter { $0.serviceType == type }
             return matching.isEmpty ? nil : (type, matching)
         }
+    }
+
+    /// Accounts sorted by user-defined order.
+    var orderedAccounts: [Account] {
+        // Ensure every account has an order entry; append any missing ones
+        let knownIds = Set(accountOrder)
+        let missing = accounts.filter { !knownIds.contains($0.id) }
+        if !missing.isEmpty {
+            // Side-effect free: caller should call ensureOrderIntegrity() on load
+            return accountOrder.compactMap { id in accounts.first { $0.id == id } } + missing
+        }
+        return accountOrder.compactMap { id in accounts.first { $0.id == id } }
+    }
+
+    /// Ensure every account is in accountOrder and remove stale entries.
+    func ensureOrderIntegrity() {
+        let accountIds = Set(accounts.map { $0.id })
+        var order = accountOrder.filter { accountIds.contains($0) }
+        for account in accounts where !order.contains(account.id) {
+            order.append(account.id)
+        }
+        if order != accountOrder {
+            accountOrder = order
+        }
+    }
+
+    /// Move an account up (earlier) in the display order.
+    func moveAccountUp(id: UUID) {
+        ensureOrderIntegrity()
+        guard let idx = accountOrder.firstIndex(of: id), idx > 0 else { return }
+        accountOrder.swapAt(idx, idx - 1)
+    }
+
+    /// Move an account down (later) in the display order.
+    func moveAccountDown(id: UUID) {
+        ensureOrderIntegrity()
+        guard let idx = accountOrder.firstIndex(of: id), idx < accountOrder.count - 1 else { return }
+        accountOrder.swapAt(idx, idx + 1)
+    }
+
+    /// Whether the account can be moved up.
+    func canMoveUp(id: UUID) -> Bool {
+        guard let idx = accountOrder.firstIndex(of: id) else { return false }
+        return idx > 0
+    }
+
+    /// Whether the account can be moved down.
+    func canMoveDown(id: UUID) -> Bool {
+        guard let idx = accountOrder.firstIndex(of: id) else { return false }
+        return idx < accountOrder.count - 1
     }
 
     // MARK: - Dynamic Menu Bar Icon
