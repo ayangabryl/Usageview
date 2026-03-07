@@ -20,12 +20,25 @@ final class OpenAIAuthService: Sendable {
     /// Set when a device flow completes (success or failure) while the window was closed
     var pendingResult: OpenAIAccountInfo?
     var flowFinished: Bool = false
+    /// Which account the finished flow belongs to (prevents stale consumption by a different account)
+    private(set) var finishedFlowAccountId: UUID?
     /// The account ID currently running the device flow
     private(set) var activeFlowAccountId: UUID?
+    /// Human-readable error detail from the last failed flow
+    var lastFlowError: String?
     private var flowTask: Task<Void, Never>?
 
     private let clientId = "app_EMoamEEZ73f0CkXaXp7hrann"
     private let issuer = "https://auth.openai.com"
+    private var userAgent: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        #if arch(arm64)
+        let arch = "arm64"
+        #else
+        let arch = "x86_64"
+        #endif
+        return "QuotaBar/\(version) (macOS; \(arch))"
+    }
 
     // MARK: - Multi-Account Auth
 
@@ -83,12 +96,15 @@ final class OpenAIAuthService: Sendable {
         cancelDeviceFlow()
         activeFlowAccountId = accountId
         flowFinished = false
+        finishedFlowAccountId = nil
         pendingResult = nil
+        lastFlowError = nil
         flowTask = Task {
             let info = await startDeviceFlow(for: accountId)
             if Task.isCancelled { return }
             // Store result for the view to pick up
             self.pendingResult = info
+            self.finishedFlowAccountId = accountId
             self.flowFinished = true
             self.activeFlowAccountId = nil
             self.flowTask = nil
@@ -101,7 +117,9 @@ final class OpenAIAuthService: Sendable {
         flowTask = nil
         activeFlowAccountId = nil
         flowFinished = false
+        finishedFlowAccountId = nil
         pendingResult = nil
+        lastFlowError = nil
         isLoading = false
         userCode = nil
     }
@@ -111,6 +129,7 @@ final class OpenAIAuthService: Sendable {
         let result = pendingResult
         pendingResult = nil
         flowFinished = false
+        finishedFlowAccountId = nil
         return result
     }
 
@@ -126,10 +145,11 @@ final class OpenAIAuthService: Sendable {
         let codeURL = URL(string: "\(issuer)/api/accounts/deviceauth/usercode")!
         var codeJSON: [String: Any]?
 
-        for attempt in 0..<3 {
+        for attempt in 0..<5 {
             if Task.isCancelled { return nil }
             if attempt > 0 {
-                let delay = Double(attempt) * 5.0 // 5s, 10s
+                // Exponential backoff: 3s, 8s, 15s, 25s
+                let delay = Double(attempt) * Double(attempt) + 2.0
                 logger.info("OpenAI device flow: waiting \(delay)s before retry \(attempt + 1)")
                 try? await Task.sleep(for: .seconds(delay))
                 if Task.isCancelled { return nil }
@@ -139,7 +159,8 @@ final class OpenAIAuthService: Sendable {
             codeRequest.httpMethod = "POST"
             codeRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             codeRequest.setValue("application/json", forHTTPHeaderField: "Accept")
-            codeRequest.timeoutInterval = 15
+            codeRequest.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+            codeRequest.timeoutInterval = 30
             codeRequest.httpBody = try? JSONSerialization.data(withJSONObject: [
                 "client_id": clientId
             ])
@@ -156,7 +177,7 @@ final class OpenAIAuthService: Sendable {
             let httpStatus = (codeResponse as? HTTPURLResponse)?.statusCode ?? 0
 
             if httpStatus == 429 {
-                logger.warning("OpenAI device flow: Cloudflare 429 (attempt \(attempt + 1)/3), retrying...")
+                logger.warning("OpenAI device flow: 429 (attempt \(attempt + 1)/5), retrying...")
                 continue
             }
 
@@ -175,7 +196,8 @@ final class OpenAIAuthService: Sendable {
         guard let codeJSON,
               let uCode = codeJSON["user_code"] as? String
         else {
-            logger.error("OpenAI device flow: failed to get user code after 3 attempts")
+            logger.error("OpenAI device flow: failed to get user code after 5 attempts")
+            lastFlowError = "Could not get device code from OpenAI (possible rate limit or network issue)"
             return nil
         }
 
@@ -196,34 +218,41 @@ final class OpenAIAuthService: Sendable {
             NSWorkspace.shared.open(url)
         }
 
-        // Step 3: Poll for authorization
-        let interval = codeJSON["interval"] as? Int
+        // Step 3: Poll for authorization (match opencode: device_auth_id + user_code only, no client_id)
+        let rawInterval = codeJSON["interval"] as? Int
             ?? Int(codeJSON["interval"] as? String ?? "")
             ?? 5
+        let pollingInterval = max(rawInterval, 1) + 3 // safety margin like opencode
         let tokenURL = URL(string: "\(issuer)/api/accounts/deviceauth/token")!
 
         while !Task.isCancelled {
-            try? await Task.sleep(for: .seconds(interval))
+            try? await Task.sleep(for: .seconds(pollingInterval))
             if Task.isCancelled { return nil }
 
             var tokenRequest = URLRequest(url: tokenURL)
             tokenRequest.httpMethod = "POST"
             tokenRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             tokenRequest.setValue("application/json", forHTTPHeaderField: "Accept")
-            tokenRequest.timeoutInterval = 15
-            var pollBody: [String: String] = [
-                "client_id": clientId,
-                "user_code": uCode
-            ]
+            tokenRequest.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+            tokenRequest.timeoutInterval = 30
+            // opencode sends only device_auth_id + user_code (no client_id)
+            var pollBody: [String: String] = [:]
             if let deviceAuthId {
                 pollBody["device_auth_id"] = deviceAuthId
             }
+            pollBody["user_code"] = uCode
             tokenRequest.httpBody = try? JSONSerialization.data(withJSONObject: pollBody)
 
             guard let (tokenData, tokenResponse) = try? await URLSession.shared.data(for: tokenRequest)
             else { continue }
 
             let pollStatus = (tokenResponse as? HTTPURLResponse)?.statusCode ?? 0
+
+            // 403/404 = authorization pending (match opencode behavior)
+            if pollStatus == 403 || pollStatus == 404 {
+                continue
+            }
+
             let pollResponseBody = String(data: tokenData, encoding: .utf8) ?? ""
             logger.info("OpenAI poll response (HTTP \(pollStatus)): \(pollResponseBody.prefix(300), privacy: .public)")
 
@@ -269,19 +298,22 @@ final class OpenAIAuthService: Sendable {
         return nil
     }
 
-    /// Exchange device flow auth code for tokens
+    /// Exchange device flow auth code for tokens (form-urlencoded, matching opencode)
     private func exchangeDeviceCode(authCode: String, codeVerifier: String, accountId: UUID) async -> OpenAIAccountInfo? {
         let url = URL(string: "\(issuer)/oauth/token")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: [
-            "grant_type": "authorization_code",
-            "client_id": clientId,
-            "code": authCode,
-            "code_verifier": codeVerifier,
-            "redirect_uri": "\(issuer)/deviceauth/callback"
-        ])
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        var components = URLComponents()
+        components.queryItems = [
+            URLQueryItem(name: "grant_type", value: "authorization_code"),
+            URLQueryItem(name: "client_id", value: clientId),
+            URLQueryItem(name: "code", value: authCode),
+            URLQueryItem(name: "code_verifier", value: codeVerifier),
+            URLQueryItem(name: "redirect_uri", value: "\(issuer)/deviceauth/callback")
+        ]
+        request.httpBody = components.query?.data(using: .utf8)
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -332,16 +364,19 @@ final class OpenAIAuthService: Sendable {
             return access
         }
 
-        // Refresh
+        // Refresh (form-urlencoded, matching opencode)
         let url = URL(string: "\(issuer)/oauth/token")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: [
-            "grant_type": "refresh_token",
-            "refresh_token": refresh,
-            "client_id": clientId
-        ])
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        var components = URLComponents()
+        components.queryItems = [
+            URLQueryItem(name: "grant_type", value: "refresh_token"),
+            URLQueryItem(name: "refresh_token", value: refresh),
+            URLQueryItem(name: "client_id", value: clientId)
+        ]
+        request.httpBody = components.query?.data(using: .utf8)
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)

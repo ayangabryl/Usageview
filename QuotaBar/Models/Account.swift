@@ -89,7 +89,7 @@ struct Account: Codable, Identifiable, Sendable {
         switch (serviceType, authMethod) {
         case (.gemini, _): return true
         case (.claude, .apiKey), (.chatgpt, .apiKey): return true
-        case (.chatgpt, .oauth): return true  // No usage/quota API; only shows plan name
+        case (.chatgpt, .oauth): return !hasChatGPTUsage  // Show usage when /wham/usage data is available
         case (.kimi, _): return !hasKimiBilling  // Status-only until billing data loads
         default: return false
         }
@@ -105,9 +105,9 @@ struct Account: Codable, Identifiable, Sendable {
         return currentUsage >= usageLimit
     }
 
-    /// Whether this is a Claude OAuth account with dual rate windows
+    /// Whether this is a Claude or ChatGPT OAuth account with dual rate windows
     var hasDualWindows: Bool {
-        serviceType == .claude && authMethod == .oauth && fiveHourUsage != nil && sevenDayUsage != nil
+        (serviceType == .claude || serviceType == .chatgpt) && authMethod == .oauth && fiveHourUsage != nil && sevenDayUsage != nil
     }
 
     /// Whether this Copilot account has both premium and chat quotas
@@ -118,6 +118,11 @@ struct Account: Codable, Identifiable, Sendable {
     /// Whether this Kimi account has billing data
     var hasKimiBilling: Bool {
         serviceType == .kimi && kimiWeeklyLimit != nil && kimiWeeklyLimit! > 0
+    }
+
+    /// Whether this ChatGPT account has real usage data from /wham/usage
+    var hasChatGPTUsage: Bool {
+        serviceType == .chatgpt && authMethod == .oauth && fiveHourUsage != nil
     }
 
     /// Whether a reset date is plausible for a given rate window.

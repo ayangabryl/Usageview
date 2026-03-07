@@ -123,6 +123,8 @@ struct MenuBarContentView: View {
                 .frame(maxWidth: .infinity)
             } else {
                 // Scrollable grouped account list
+                // Observe dataVersion to force re-render after refresh updates
+                let _ = store.dataVersion
                 ScrollView(.vertical, showsIndicators: true) {
                     LazyVStack(spacing: store.viewMode == .compact ? 1 : 4, pinnedViews: .sectionHeaders) {
                         ForEach(store.groupedAccounts, id: \.0) { serviceType, accounts in
@@ -1315,7 +1317,7 @@ struct OpenAIInlineConnectView: View {
                     .font(.title2)
                     .foregroundStyle(.orange)
 
-                Text("OpenAI is blocking sign-in requests.\nUse an API key instead, or try again later.")
+                Text(errorMessage ?? "Sign-in failed.\nUse an API key instead, or try again later.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -1380,27 +1382,26 @@ struct OpenAIInlineConnectView: View {
         .padding(.bottom, 12)
         .onAppear {
             // If a flow is already active for this account, just observe it.
-            // If this is the first time and no flow is running, auto-start.
             if authService.isFlowActive(for: accountId) {
                 // Flow is running, view will observe userCode/isLoading
-            } else if authService.flowFinished {
-                // Flow finished while window was closed — consume result
+            } else if authService.flowFinished && authService.finishedFlowAccountId == accountId {
+                // Flow finished while window was closed — consume result only if it's for THIS account
                 let result = authService.consumeResult()
                 if result != nil {
                     onDone(result)
                 } else {
-                    errorMessage = "failed"
+                    errorMessage = authService.lastFlowError ?? "Sign-in failed"
                 }
             }
             // Otherwise show the "Sign in with OpenAI" button
         }
         .onChange(of: authService.flowFinished) { _, finished in
-            if finished {
+            if finished && authService.finishedFlowAccountId == accountId {
                 let result = authService.consumeResult()
                 if result != nil {
                     onDone(result)
                 } else {
-                    errorMessage = "failed"
+                    errorMessage = authService.lastFlowError ?? "Sign-in failed"
                 }
             }
         }

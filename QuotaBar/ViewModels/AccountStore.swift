@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+import os
+
+private let storeLogger = Logger(subsystem: "com.ayangabryl.usage", category: "AccountStore")
 
 enum ViewMode: String, CaseIterable {
     case expanded
@@ -13,6 +16,8 @@ final class AccountStore {
     var refreshingIds: Set<UUID> = []
     var viewMode: ViewMode = .expanded
     var showWeeklyLimit: Bool = false
+    /// Incremented after every save to force SwiftUI re-render in MenuBarExtra
+    var dataVersion: Int = 0
 
     let githubAuth: GitHubAuthService
     let claudeAuth: AnthropicAuthService
@@ -56,6 +61,7 @@ final class AccountStore {
         if let data = try? JSONEncoder().encode(accounts) {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
+        dataVersion += 1
     }
 
     func load() {
@@ -214,6 +220,7 @@ final class AccountStore {
             }
 
         case .chatgpt:
+            storeLogger.info("ChatGPT refresh: authMethod=\(account.authMethod.rawValue, privacy: .public) id=\(account.id)")
             if account.authMethod == .apiKey {
                 // API key: verify it's still valid
                 let valid = await openaiAuth.verifyAPIKey(for: account.id)
@@ -223,10 +230,40 @@ final class AccountStore {
                 }
             } else if let status = await openaiUsage.fetchStatus(for: account.id) {
                 if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-                    accounts[index].usageUnit = status.planName
+                    storeLogger.info("ChatGPT store: plan=\(status.planName, privacy: .public) 5h=\(status.fiveHourUsedPercent ?? -1) weekly=\(status.weeklyUsedPercent ?? -1)")
                     accounts[index].planName = status.planName
+
+                    // Store rate limit windows (reuse Claude's dual window fields)
+                    if let fiveHour = status.fiveHourUsedPercent {
+                        accounts[index].fiveHourUsage = Double(fiveHour)
+                        accounts[index].fiveHourResetDate = status.fiveHourResetAt
+
+                        // Primary usage for progress bar
+                        accounts[index].currentUsage = Double(fiveHour)
+                        accounts[index].usageLimit = 100
+                        accounts[index].usageUnit = "% used"
+                        if let reset = status.fiveHourResetAt {
+                            accounts[index].resetDate = reset
+                        }
+                    }
+                    if let weekly = status.weeklyUsedPercent {
+                        accounts[index].sevenDayUsage = Double(weekly)
+                        accounts[index].sevenDayResetDate = status.weeklyResetAt
+                    }
+
+                    // If no rate limit data, fall back to status display
+                    if status.fiveHourUsedPercent == nil {
+                        accounts[index].usageUnit = status.planName
+                    }
+
+                    let storedAccount = accounts[index]
+                    storeLogger.info("ChatGPT stored: fiveHour=\(storedAccount.fiveHourUsage ?? -1) sevenDay=\(storedAccount.sevenDayUsage ?? -1) isStatusOnly=\(storedAccount.isStatusOnly) hasDualWindows=\(storedAccount.hasDualWindows)")
                     save()
+                } else {
+                    storeLogger.error("ChatGPT store: account NOT FOUND in array!")
                 }
+            } else {
+                storeLogger.warning("ChatGPT refresh: fetchStatus returned nil")
             }
 
         case .kimi:

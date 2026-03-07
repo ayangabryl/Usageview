@@ -45,6 +45,46 @@
 			"label": "Build QuotaBar",
 			"type": "shell",
 			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:|warning:.*OpenAI|warning:.*Account' | tail -20"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
+		},
+		{
+			"label": "Build QuotaBar",
+			"type": "shell",
+			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep 'error:' | head -10"
+		},
+		{
+			"label": "Build Check",
+			"type": "shell",
+			"command": "cd /Users/ayangabryl/Documents/Swift/QuotaBar && xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'error:|warning:.*AccountStore|BUILD' | tail -15"
+		},
+		{
+			"label": "Build Check",
+			"type": "shell",
+			"command": "cd /Users/ayangabryl/Documents/Swift/QuotaBar && xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | tail -5"
+		},
+		{
+			"label": "Build Check",
+			"type": "shell",
+			"command": "cd /Users/ayangabryl/Documents/Swift/QuotaBar && xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | tail -5"
 		}
 	]
 }
