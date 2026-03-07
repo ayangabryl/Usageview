@@ -22,7 +22,8 @@ dmg:
 	@chmod +x Scripts/build-dmg.sh
 	@./Scripts/build-dmg.sh
 
-# Build signed + notarized DMG and publish as GitHub Release
+# Build signed + notarized DMG, sign for Sparkle, update appcast, publish GitHub Release
+# All in one step — just run: make release
 # Prerequisites: gh auth login, Apple credentials in env
 release:
 	@if ! command -v gh >/dev/null 2>&1; then \
@@ -31,14 +32,50 @@ release:
 	fi
 	@VERSION=$$(grep 'MARKETING_VERSION' Usageview.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]') && \
 	DMG="build/Usageview-$${VERSION}.dmg" && \
-	echo "🚀 Building Usageview v$${VERSION} release..." && \
+	echo "" && \
+	echo "╔══════════════════════════════════════════════════╗" && \
+	echo "║       Usageview Release — v$${VERSION}              ║" && \
+	echo "║       Single-step: build → sign → publish        ║" && \
+	echo "╚══════════════════════════════════════════════════╝" && \
+	echo "" && \
 	\
+	echo "── Step 1/6: Building & creating DMG ──────────────" && \
 	export CODE_SIGN_IDENTITY="Developer ID Application: Ian Gabriel Agujitas (MZRACJ7Z64)" && \
 	export TEAM_ID="MZRACJ7Z64" && \
 	chmod +x Scripts/build-dmg.sh && \
 	./Scripts/build-dmg.sh && \
 	\
-	echo "📦 Creating GitHub Release v$${VERSION}..." && \
+	echo "── Step 2/6: Signing DMG with EdDSA (Sparkle) ─────" && \
+	SPARKLE_BIN=$$(find ~/Library/Developer/Xcode/DerivedData/Usageview-*/SourcePackages/artifacts/sparkle/Sparkle/bin -maxdepth 0 -type d 2>/dev/null | head -1) && \
+	if [ -z "$$SPARKLE_BIN" ]; then \
+		echo "❌ Sparkle bin not found. Build the project in Xcode first."; \
+		exit 1; \
+	fi && \
+	SIGN_OUTPUT=$$("$$SPARKLE_BIN/sign_update" "$$DMG") && \
+	echo "   $$SIGN_OUTPUT" && \
+	ED_SIGNATURE=$$(echo "$$SIGN_OUTPUT" | grep -o 'sparkle:edSignature="[^"]*"' | sed 's/sparkle:edSignature="//;s/"//') && \
+	DMG_LENGTH=$$(echo "$$SIGN_OUTPUT" | grep -o 'length="[^"]*"' | sed 's/length="//;s/"//') && \
+	if [ -z "$$ED_SIGNATURE" ] || [ -z "$$DMG_LENGTH" ]; then \
+		echo "❌ Failed to extract EdDSA signature"; \
+		exit 1; \
+	fi && \
+	echo "   ✅ EdDSA signature obtained" && \
+	\
+	echo "── Step 3/6: Generating appcast.xml ────────────────" && \
+	DOWNLOAD_URL="https://github.com/ayangabryl/Usageview/releases/download/v$${VERSION}/Usageview-$${VERSION}.dmg" && \
+	BUILD_NUMBER=$$(grep 'CURRENT_PROJECT_VERSION' Usageview.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]') && \
+	PUB_DATE=$$(date -R) && \
+	printf '<?xml version="1.0" encoding="utf-8"?>\n<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">\n  <channel>\n    <title>Usageview Updates</title>\n    <link>https://raw.githubusercontent.com/ayangabryl/Usageview/main/appcast.xml</link>\n    <description>Most recent changes with links to updates.</description>\n    <language>en</language>\n    <item>\n      <title>Version %s</title>\n      <pubDate>%s</pubDate>\n      <sparkle:version>%s</sparkle:version>\n      <sparkle:shortVersionString>%s</sparkle:shortVersionString>\n      <enclosure\n        url="%s"\n        sparkle:edSignature="%s"\n        length="%s"\n        type="application/octet-stream" />\n    </item>\n  </channel>\n</rss>\n' \
+	"$$VERSION" "$$PUB_DATE" "$$BUILD_NUMBER" "$$VERSION" "$$DOWNLOAD_URL" "$$ED_SIGNATURE" "$$DMG_LENGTH" > appcast.xml && \
+	echo "   ✅ appcast.xml updated" && \
+	\
+	echo "── Step 4/6: Committing appcast.xml ────────────────" && \
+	git add appcast.xml && \
+	git commit -m "Update appcast.xml for v$${VERSION}" --allow-empty && \
+	git push origin main && \
+	echo "   ✅ appcast.xml pushed to main" && \
+	\
+	echo "── Step 5/6: Creating GitHub Release ───────────────" && \
 	if git rev-parse "v$${VERSION}" >/dev/null 2>&1; then \
 		echo "   Tag v$${VERSION} already exists, using it"; \
 	else \
@@ -48,9 +85,19 @@ release:
 	gh release create "v$${VERSION}" "$$DMG" \
 		--title "Usageview v$${VERSION}" \
 		--generate-notes && \
+	\
+	echo "── Step 6/6: Waiting for notarization ──────────────" && \
+	echo "   ⏳ Notarization was submitted during DMG build." && \
+	echo "   Run 'make staple' once notarization completes." && \
 	echo "" && \
-	echo "✅ Release published!" && \
-	echo "   👉 https://github.com/ayangabryl/Usageview/releases/tag/v$${VERSION}"
+	echo "═══════════════════════════════════════════════════" && \
+	echo "  ✅ Release v$${VERSION} published!" && \
+	echo "  📦 DMG:      $$DMG" && \
+	echo "  🔑 Sparkle:  EdDSA signed" && \
+	echo "  📡 Appcast:  Updated & pushed" && \
+	echo "  🐙 Release:  https://github.com/ayangabryl/Usageview/releases/tag/v$${VERSION}" && \
+	echo "  ⏳ Next:     make staple (after notarization)" && \
+	echo "═══════════════════════════════════════════════════"
 
 # Tag and push (without building — useful for CI-only releases)
 tag:
