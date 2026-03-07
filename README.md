@@ -2,7 +2,7 @@
 
 **Keep your AI usage limits visible — right in the menu bar.**
 
-QuotaBar is a lightweight macOS app that shows how much of your AI quota you've used across Claude, GitHub Copilot, ChatGPT, Gemini, and Kimi — with reset countdowns so you always know when you get more.
+QuotaBar is a lightweight macOS app that shows how much of your AI quota you've used across Claude, GitHub Copilot, OpenAI, Gemini, and Kimi — with reset countdowns so you always know when you get more.
 
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue?style=flat-square)](https://www.apple.com/macos/)
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?style=flat-square&logo=swift&logoColor=white)](https://swift.org)
@@ -30,7 +30,7 @@ No Dock icon. No background noise. Just a glance at your menu bar.
 |:---------|:-----|:-------------|
 | **Claude** | OAuth or API key | 5-hour + 7-day utilization with reset countdowns |
 | **GitHub Copilot** | Device flow sign-in | Premium requests used (e.g. 142/300), reset date |
-| **ChatGPT** | OAuth or API key | Plan tier (Free/Plus/Pro/Team/Enterprise) |
+| **OpenAI** | OAuth or API key | Plan tier (Free/Plus/Pro/Team/Enterprise) |
 | **Gemini** | API key | Available models, Pro/Ultra detection |
 | **Kimi AI** | API key | Connection status |
 
@@ -111,7 +111,7 @@ QuotaBar/
 ├── Services/                     # Provider integrations
 │   ├── Anthropic/                #   Claude
 │   ├── GitHub/                   #   Copilot
-│   ├── OpenAI/                   #   ChatGPT
+│   ├── OpenAI/                   #   OpenAI
 │   ├── Gemini/                   #   Gemini
 │   └── Kimi/                     #   Kimi AI
 ├── ViewModels/                   # State management

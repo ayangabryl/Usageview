@@ -1347,7 +1347,7 @@ struct OpenAIInlineConnectView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
             } else {
-                Text("Sign in with your OpenAI account\nto connect ChatGPT.")
+                Text("Sign in with your OpenAI account\nto connect OpenAI.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -1430,7 +1430,7 @@ struct OpenAIInlineConnectView: View {
             }
             .buttonStyle(.plain)
 
-            Text("Connect ChatGPT")
+            Text("Connect OpenAI")
                 .font(.headline)
 
             Spacer()
@@ -1552,7 +1552,7 @@ struct OpenAIAPIKeyInlineConnectView: View {
 
             ServiceIconView(serviceType: .chatgpt, avatarURL: nil, size: 48)
 
-            Text("Enter your OpenAI API key\nto connect ChatGPT.")
+            Text("Enter your OpenAI API key\nto connect OpenAI.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -1611,7 +1611,7 @@ struct OpenAIAPIKeyInlineConnectView: View {
             }
             .buttonStyle(.plain)
 
-            Text("Connect ChatGPT")
+            Text("Connect OpenAI")
                 .font(.headline)
 
             HStack(spacing: 4) {

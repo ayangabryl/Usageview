@@ -14,7 +14,7 @@ enum ServiceType: String, Codable, CaseIterable, Sendable {
         switch self {
         case .claude: "Claude"
         case .copilot: "GitHub Copilot"
-        case .chatgpt: "ChatGPT"
+        case .chatgpt: "OpenAI"
         case .gemini: "Gemini"
         case .kimi: "Kimi AI"
         }
