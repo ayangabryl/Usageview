@@ -36,6 +36,7 @@ enum MenuBarIconRenderer {
             rect.fill()
 
             let opacity: CGFloat = isStale ? 0.35 : 1.0
+            let isEmpty = (percent == nil)
             let clamped = min(max((percent ?? 0) / 100, 0), 1)
 
             let cx = rect.midX
@@ -58,12 +59,12 @@ enum MenuBarIconRenderer {
             let trackColor: NSColor
             switch style {
             case .white:
-                trackColor = .white.withAlphaComponent(0.20 * opacity)
+                trackColor = .white.withAlphaComponent(isEmpty ? 0.60 : 0.20 * opacity)
             case .colored:
                 let base = customColor ?? NSColor(red: 0.38, green: 0.52, blue: 1.0, alpha: 1.0)
-                trackColor = base.withAlphaComponent(0.25 * opacity)
+                trackColor = base.withAlphaComponent(isEmpty ? 0.60 : 0.25 * opacity)
             case .dynamic:
-                trackColor = .labelColor.withAlphaComponent(0.15 * opacity)
+                trackColor = .labelColor.withAlphaComponent(isEmpty ? 0.50 : 0.15 * opacity)
             }
             trackColor.setStroke()
             trackPath.stroke()
@@ -118,11 +119,14 @@ enum MenuBarIconRenderer {
 
             return true
         }
-        image.isTemplate = (style == .white)
+        // Use template mode for white style, or when idle/empty so macOS
+        // automatically adapts the icon color for the current menu bar.
+        image.isTemplate = (style == .white) || isEmpty
         return image
     }
 
-    /// Generate a simple idle icon (empty gauge)
+    /// Generate a simple idle icon (empty gauge) — always uses template rendering
+    /// so macOS adapts the color for the current menu bar appearance.
     static var idleIcon: NSImage {
         icon(percent: nil, style: .dynamic, isStale: true)
     }
