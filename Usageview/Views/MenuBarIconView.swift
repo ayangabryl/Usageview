@@ -29,14 +29,23 @@ enum MenuBarIconRenderer {
     ///   - percent: Fill percentage 0–100. `nil` = idle state.
     ///   - style: The icon style (white/colored/dynamic).
     ///   - isStale: Dims the icon when data is stale or errored.
-    static func icon(percent: Double?, style: MenuBarIconStyle = .dynamic, customColor: NSColor? = nil, isStale: Bool = false) -> NSImage {
+    ///   - showCheckmark: Briefly overlays a green checkmark in the center.
+    ///   - refreshPhase: 0.0–1.0 animates a spinning dot during refresh. `nil` = no spinner.
+    static func icon(
+        percent: Double?,
+        style: MenuBarIconStyle = .dynamic,
+        customColor: NSColor? = nil,
+        isStale: Bool = false,
+        showCheckmark: Bool = false,
+        refreshPhase: Double? = nil
+    ) -> NSImage {
         let size = NSSize(width: 18, height: 18)
+        let noData = (percent == nil)
         let image = NSImage(size: size, flipped: false) { rect in
             NSColor.clear.setFill()
             rect.fill()
 
             let opacity: CGFloat = isStale ? 0.35 : 1.0
-            let isEmpty = (percent == nil)
             let clamped = min(max((percent ?? 0) / 100, 0), 1)
 
             let cx = rect.midX
@@ -51,82 +60,109 @@ enum MenuBarIconRenderer {
                 radius: radius,
                 startAngle: startAngle,
                 endAngle: endAngle,
-                clockwise: false  // counter-clockwise: 135° → 180° → 270° → 0° → 45°
+                clockwise: false
             )
             trackPath.lineWidth = lineWidth
             trackPath.lineCapStyle = .round
 
             let trackColor: NSColor
-            switch style {
-            case .white:
-                trackColor = .white.withAlphaComponent(isEmpty ? 0.60 : 0.20 * opacity)
-            case .colored:
-                let base = customColor ?? NSColor(red: 0.38, green: 0.52, blue: 1.0, alpha: 1.0)
-                trackColor = base.withAlphaComponent(isEmpty ? 0.60 : 0.25 * opacity)
-            case .dynamic:
-                trackColor = .labelColor.withAlphaComponent(isEmpty ? 0.50 : 0.15 * opacity)
+            if noData {
+                // Solid white gauge when no accounts — always clearly visible
+                trackColor = .white.withAlphaComponent(0.85)
+            } else {
+                switch style {
+                case .white:
+                    trackColor = .white.withAlphaComponent(0.20 * opacity)
+                case .colored:
+                    let base = customColor ?? NSColor(red: 0.38, green: 0.52, blue: 1.0, alpha: 1.0)
+                    trackColor = base.withAlphaComponent(0.25 * opacity)
+                case .dynamic:
+                    trackColor = .labelColor.withAlphaComponent(0.15 * opacity)
+                }
             }
             trackColor.setStroke()
             trackPath.stroke()
 
             // --- Filled arc ---
-            guard clamped > 0 else { return true }
+            if clamped > 0 {
+                let fillEndDeg = startAngle + clamped * arcSpan
 
-            // Fill goes from startAngle (left arm) along the U towards the right arm.
-            // Counter-clockwise (increasing angles): fillEnd = startAngle + clamped * arcSpan
-            let fillEndDeg = startAngle + clamped * arcSpan
+                let fillPath = NSBezierPath()
+                fillPath.appendArc(
+                    withCenter: NSPoint(x: cx, y: cy),
+                    radius: radius,
+                    startAngle: startAngle,
+                    endAngle: fillEndDeg,
+                    clockwise: false
+                )
+                fillPath.lineWidth = lineWidth
+                fillPath.lineCapStyle = .round
 
-            let fillPath = NSBezierPath()
-            fillPath.appendArc(
-                withCenter: NSPoint(x: cx, y: cy),
-                radius: radius,
-                startAngle: startAngle,
-                endAngle: fillEndDeg,
-                clockwise: false
-            )
-            fillPath.lineWidth = lineWidth
-            fillPath.lineCapStyle = .round
+                let fillColor: NSColor
+                switch style {
+                case .white:
+                    fillColor = .white.withAlphaComponent(opacity)
+                case .colored:
+                    let base = customColor ?? NSColor(red: 0.38, green: 0.52, blue: 1.0, alpha: 1.0)
+                    fillColor = base.withAlphaComponent(opacity)
+                case .dynamic:
+                    if clamped >= 0.9 {
+                        fillColor = .systemRed.withAlphaComponent(opacity)
+                    } else if clamped >= 0.7 {
+                        fillColor = .systemOrange.withAlphaComponent(opacity)
+                    } else {
+                        fillColor = .systemGreen.withAlphaComponent(opacity)
+                    }
+                }
+                fillColor.setStroke()
+                fillPath.stroke()
 
-            let fillColor: NSColor
-            switch style {
-            case .white:
-                fillColor = .white.withAlphaComponent(opacity)
-            case .colored:
-                let base = customColor ?? NSColor(red: 0.38, green: 0.52, blue: 1.0, alpha: 1.0)
-                fillColor = base.withAlphaComponent(opacity)
-            case .dynamic:
-                if clamped >= 0.9 {
-                    fillColor = .systemRed.withAlphaComponent(opacity)
-                } else if clamped >= 0.7 {
-                    fillColor = .systemOrange.withAlphaComponent(opacity)
-                } else {
-                    fillColor = .systemGreen.withAlphaComponent(opacity)
+                // --- Small dot at the current fill position ---
+                if clamped > 0.02 && clamped < 0.98 {
+                    let dotAngleRad = fillEndDeg * .pi / 180
+                    let dotX = cx + radius * cos(dotAngleRad)
+                    let dotY = cy + radius * sin(dotAngleRad)
+                    let dotR: CGFloat = 1.2
+                    let dotRect = NSRect(x: dotX - dotR, y: dotY - dotR, width: dotR * 2, height: dotR * 2)
+                    fillColor.setFill()
+                    NSBezierPath(ovalIn: dotRect).fill()
                 }
             }
-            fillColor.setStroke()
-            fillPath.stroke()
 
-            // --- Small dot at the current fill position ---
-            if clamped > 0.02 && clamped < 0.98 {
-                let dotAngleRad = fillEndDeg * .pi / 180
-                let dotX = cx + (radius) * cos(dotAngleRad)
-                let dotY = cy + (radius) * sin(dotAngleRad)
-                let dotR: CGFloat = 1.2
+            // --- Spinning dot during refresh ---
+            if let phase = refreshPhase {
+                let spinAngle = startAngle + phase * arcSpan
+                let spinRad = spinAngle * .pi / 180
+                let dotX = cx + radius * cos(spinRad)
+                let dotY = cy + radius * sin(spinRad)
+                let dotR: CGFloat = 2.0
                 let dotRect = NSRect(x: dotX - dotR, y: dotY - dotR, width: dotR * 2, height: dotR * 2)
-                fillColor.setFill()
+                NSColor.white.withAlphaComponent(0.9).setFill()
                 NSBezierPath(ovalIn: dotRect).fill()
+            }
+
+            // --- Green checkmark overlay (account linked) ---
+            if showCheckmark {
+                NSColor.systemGreen.setStroke()
+                let check = NSBezierPath()
+                let checkCx = rect.midX
+                let checkCy = rect.midY + 0.5
+                check.move(to: NSPoint(x: checkCx - 3.5, y: checkCy))
+                check.line(to: NSPoint(x: checkCx - 1, y: checkCy - 3))
+                check.line(to: NSPoint(x: checkCx + 4, y: checkCy + 3.5))
+                check.lineWidth = 2.0
+                check.lineCapStyle = .round
+                check.lineJoinStyle = .round
+                check.stroke()
             }
 
             return true
         }
-        // Use template mode for white style, or when idle/empty so macOS
-        // automatically adapts the icon color for the current menu bar.
-        image.isTemplate = (style == .white) || isEmpty
+        image.isTemplate = false
         return image
     }
 
-    /// Generate a simple idle icon (empty gauge) — always uses template rendering
-    /// so macOS adapts the color for the current menu bar appearance.
+    /// Generate a simple idle icon (empty gauge) — solid white, always visible.
     static var idleIcon: NSImage {
         icon(percent: nil, style: .dynamic, isStale: true)
     }
