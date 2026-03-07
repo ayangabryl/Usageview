@@ -98,7 +98,12 @@ struct SettingsView: View {
     }
 
     private func accountRow(_ account: Account) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.quaternary)
+                .frame(width: 16)
+
             ServiceIconView(
                 serviceType: account.serviceType,
                 avatarURL: account.avatarURL,
@@ -158,17 +163,18 @@ struct SettingsView: View {
                         : account.label
                     editingAccountId = account.id
                 } label: {
-                    Image(systemName: "character.cursor.ibeam")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 32, height: 32)
+                    Image(systemName: "pencil.line")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 28, height: 28)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("Rename")
             }
         }
-        .padding(10)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
         .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
     }
 
