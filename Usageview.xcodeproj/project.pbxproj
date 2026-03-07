@@ -11,13 +11,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		54B185972F59CD0E0013A3ED /* QuotaBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		54B185972F59CD0E0013A3ED /* Usageview.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Usageview.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		54B185992F59CD0E0013A3ED /* QuotaBar */ = {
+		54B185992F59CD0E0013A3ED /* Usageview */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = QuotaBar;
+			path = Usageview;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -37,7 +37,7 @@
 		54B1858E2F59CD0E0013A3ED = {
 			isa = PBXGroup;
 			children = (
-				54B185992F59CD0E0013A3ED /* QuotaBar */,
+				54B185992F59CD0E0013A3ED /* Usageview */,
 				54B185A72F59CE0D0013A3ED /* Frameworks */,
 				54B185982F59CD0E0013A3ED /* Products */,
 			);
@@ -46,7 +46,7 @@
 		54B185982F59CD0E0013A3ED /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				54B185972F59CD0E0013A3ED /* QuotaBar.app */,
+				54B185972F59CD0E0013A3ED /* Usageview.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,9 +61,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		54B185962F59CD0E0013A3ED /* QuotaBar */ = {
+		54B185962F59CD0E0013A3ED /* Usageview */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 54B185A22F59CD0F0013A3ED /* Build configuration list for PBXNativeTarget "QuotaBar" */;
+			buildConfigurationList = 54B185A22F59CD0F0013A3ED /* Build configuration list for PBXNativeTarget "Usageview" */;
 			buildPhases = (
 				54B185932F59CD0E0013A3ED /* Sources */,
 				54B185942F59CD0E0013A3ED /* Frameworks */,
@@ -74,14 +74,14 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				54B185992F59CD0E0013A3ED /* QuotaBar */,
+				54B185992F59CD0E0013A3ED /* Usageview */,
 			);
-			name = QuotaBar;
+			name = Usageview;
 			packageProductDependencies = (
 				AA000002SPARKLE00000002 /* Sparkle */,
 			);
-			productName = QuotaBar;
-			productReference = 54B185972F59CD0E0013A3ED /* QuotaBar.app */;
+			productName = Usageview;
+			productReference = 54B185972F59CD0E0013A3ED /* Usageview.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -99,7 +99,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 54B185922F59CD0E0013A3ED /* Build configuration list for PBXProject "QuotaBar" */;
+			buildConfigurationList = 54B185922F59CD0E0013A3ED /* Build configuration list for PBXProject "Usageview" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -116,7 +116,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				54B185962F59CD0E0013A3ED /* QuotaBar */,
+				54B185962F59CD0E0013A3ED /* Usageview */,
 			);
 		};
 /* End PBXProject section */
@@ -286,7 +286,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = QuotaBar/Info.plist;
+				INFOPLIST_FILE = Usageview/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -296,7 +296,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.1.5;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ayangabryl.quotabar;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ayangabryl.usageview;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -313,7 +313,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = QuotaBar/QuotaBarRelease.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Usageview/UsageviewRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -333,7 +333,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = QuotaBar/Info.plist;
+				INFOPLIST_FILE = Usageview/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -343,7 +343,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.1.5;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ayangabryl.quotabar;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ayangabryl.usageview;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -358,7 +358,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		54B185922F59CD0E0013A3ED /* Build configuration list for PBXProject "QuotaBar" */ = {
+		54B185922F59CD0E0013A3ED /* Build configuration list for PBXProject "Usageview" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				54B185A02F59CD0F0013A3ED /* Debug */,
@@ -367,7 +367,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		54B185A22F59CD0F0013A3ED /* Build configuration list for PBXNativeTarget "QuotaBar" */ = {
+		54B185A22F59CD0F0013A3ED /* Build configuration list for PBXNativeTarget "Usageview" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				54B185A32F59CD0F0013A3ED /* Debug */,

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Setup script for QuotaBar development environment
+# Setup script for Usageview development environment
 # Run this once after cloning: ./Scripts/setup.sh
 
 set -e
 
-echo "🚀 Setting up QuotaBar development environment..."
+echo "🚀 Setting up Usageview development environment..."
 echo ""
 
 # Install SwiftLint if not present

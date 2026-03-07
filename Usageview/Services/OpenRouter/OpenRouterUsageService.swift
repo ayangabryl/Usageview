@@ -35,7 +35,7 @@ final class OpenRouterUsageService: Sendable {
         var request = URLRequest(url: url)
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("QuotaBar", forHTTPHeaderField: "X-Title")
+        request.setValue("Usageview", forHTTPHeaderField: "X-Title")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)

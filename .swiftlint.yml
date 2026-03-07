@@ -4,7 +4,7 @@
 excluded:
   - DerivedData
   - .build
-  - QuotaBar.xcodeproj
+  - Usageview.xcodeproj
 
 opt_in_rules:
   - empty_count

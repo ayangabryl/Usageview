@@ -1,12 +1,12 @@
-# Contributing to QuotaBar
+# Contributing to Usageview
 
 Thanks for your interest in contributing! Here's how to get started.
 
 ## Quick Setup
 
 ```bash
-git clone https://github.com/ayangabryl/QuotaBar.git
-cd QuotaBar
+git clone https://github.com/ayangabryl/Usageview.git
+cd Usageview
 make setup    # installs SwiftLint + git hooks
 ```
 
@@ -21,7 +21,7 @@ make fix      # auto-fix lint issues
 make clean    # clean build artifacts
 ```
 
-Or open `QuotaBar.xcodeproj` in Xcode and hit ⌘R.
+Or open `Usageview.xcodeproj` in Xcode and hit ⌘R.
 
 ## Making Changes
 
@@ -38,7 +38,7 @@ Want to add support for a new AI service? Here's the pattern:
 
 ### 1. Create the auth service
 
-Create `QuotaBar/Services/YourProvider/YourProviderAuthService.swift`:
+Create `Usageview/Services/YourProvider/YourProviderAuthService.swift`:
 
 ```swift
 import Foundation
@@ -65,7 +65,7 @@ final class YourProviderAuthService {
 
 ### 2. Create the usage service
 
-Create `QuotaBar/Services/YourProvider/YourProviderUsageService.swift`:
+Create `Usageview/Services/YourProvider/YourProviderUsageService.swift`:
 
 ```swift
 import Foundation
@@ -86,7 +86,7 @@ final class YourProviderUsageService {
 
 ### 3. Add the service type
 
-In `QuotaBar/Models/ServiceType.swift`, add a new case:
+In `Usageview/Models/ServiceType.swift`, add a new case:
 
 ```swift
 enum ServiceType: String, Codable, CaseIterable, Sendable {

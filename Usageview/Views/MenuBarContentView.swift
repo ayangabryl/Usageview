@@ -77,7 +77,7 @@ struct MenuBarContentView: View {
         VStack(spacing: 0) {
             // Header
             HStack(alignment: .center) {
-                Text("QuotaBar")
+                Text("Usageview")
                     .font(.title2.weight(.bold))
 
                 Spacer()
@@ -2323,7 +2323,7 @@ struct JetBrainsInlineConnectView: View {
 
             ServiceIconView(serviceType: .jetbrainsAI, avatarURL: nil, size: 48)
 
-            Text("QuotaBar can auto-detect your\nJetBrains IDE AI quota.")
+            Text("Usageview can auto-detect your\nJetBrains IDE AI quota.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

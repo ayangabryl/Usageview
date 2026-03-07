@@ -37,7 +37,7 @@ final class OpenAIAuthService: Sendable {
         #else
         let arch = "x86_64"
         #endif
-        return "QuotaBar/\(version) (macOS; \(arch))"
+        return "Usageview/\(version) (macOS; \(arch))"
     }
 
     // MARK: - Multi-Account Auth

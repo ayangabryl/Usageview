@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @main
-struct QuotaBarApp: App {
+struct UsageviewApp: App {
     @State private var store = AccountStore()
     @State private var refreshTimer: Timer?
     @State private var sparkle = SparkleUpdater()

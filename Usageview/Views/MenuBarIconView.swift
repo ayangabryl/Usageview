@@ -10,7 +10,7 @@ enum MenuBarIconStyle: String, CaseIterable, Codable {
     var displayName: String { rawValue }
 }
 
-/// Renders a dynamic menu bar icon shaped like the QuotaBar logo — a horseshoe / gauge arc.
+/// Renders a dynamic menu bar icon shaped like the Usageview logo — a horseshoe / gauge arc.
 /// The arc fills clockwise from the left end to represent usage percentage.
 @MainActor
 enum MenuBarIconRenderer {

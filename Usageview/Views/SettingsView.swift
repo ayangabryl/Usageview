@@ -329,7 +329,7 @@ struct SettingsView: View {
             // App Info
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("QuotaBar")
+                    Text("Usageview")
                         .font(.subheadline.weight(.medium))
                     Text("AI usage tracker for your menu bar")
                         .font(.caption)

@@ -16,7 +16,7 @@ jobs:
       - name: Build (ad-hoc)
         run: |
           xcodebuild \
-            -scheme QuotaBar \
+            -scheme Usageview \
             -configuration Release \
             -derivedDataPath build/DerivedData \
             ONLY_ACTIVE_ARCH=YES \

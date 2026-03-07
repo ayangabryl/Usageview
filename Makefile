@@ -15,7 +15,7 @@ fix:
 
 # Build the project (Debug)
 build:
-	@xcodebuild -scheme QuotaBar -configuration Debug build | tail -5
+	@xcodebuild -scheme Usageview -configuration Debug build | tail -5
 
 # Build DMG installer (ad-hoc signed, no notarization)
 dmg:
@@ -29,9 +29,9 @@ release:
 		echo "❌ GitHub CLI not found. Install with: brew install gh"; \
 		exit 1; \
 	fi
-	@VERSION=$$(grep 'MARKETING_VERSION' QuotaBar.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]') && \
-	DMG="build/QuotaBar-$${VERSION}.dmg" && \
-	echo "🚀 Building QuotaBar v$${VERSION} release..." && \
+	@VERSION=$$(grep 'MARKETING_VERSION' Usageview.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]') && \
+	DMG="build/Usageview-$${VERSION}.dmg" && \
+	echo "🚀 Building Usageview v$${VERSION} release..." && \
 	\
 	export CODE_SIGN_IDENTITY="Developer ID Application: Ian Gabriel Agujitas (MZRACJ7Z64)" && \
 	export TEAM_ID="MZRACJ7Z64" && \
@@ -46,15 +46,15 @@ release:
 		git push origin "v$${VERSION}"; \
 	fi && \
 	gh release create "v$${VERSION}" "$$DMG" \
-		--title "QuotaBar v$${VERSION}" \
+		--title "Usageview v$${VERSION}" \
 		--generate-notes && \
 	echo "" && \
 	echo "✅ Release published!" && \
-	echo "   👉 https://github.com/ayangabryl/QuotaBar/releases/tag/v$${VERSION}"
+	echo "   👉 https://github.com/ayangabryl/Usageview/releases/tag/v$${VERSION}"
 
 # Tag and push (without building — useful for CI-only releases)
 tag:
-	@VERSION=$$(grep 'MARKETING_VERSION' QuotaBar.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]') && \
+	@VERSION=$$(grep 'MARKETING_VERSION' Usageview.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]') && \
 	if git rev-parse "v$$VERSION" >/dev/null 2>&1; then \
 		echo "❌ Tag v$$VERSION already exists. Bump MARKETING_VERSION in Xcode first."; \
 		exit 1; \
@@ -63,7 +63,7 @@ tag:
 	git tag "v$$VERSION" && \
 	git push origin "v$$VERSION" && \
 	echo "✅ Pushed v$$VERSION" && \
-	echo "   👉 https://github.com/ayangabryl/QuotaBar/releases"
+	echo "   👉 https://github.com/ayangabryl/Usageview/releases"
 
 # Check notarization status
 notarize-status:
@@ -74,17 +74,17 @@ notarize-status:
 
 # Staple notarization ticket and re-upload to GitHub Release
 staple:
-	@VERSION=$$(grep 'MARKETING_VERSION' QuotaBar.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]') && \
-	DMG="build/QuotaBar-$${VERSION}.dmg" && \
+	@VERSION=$$(grep 'MARKETING_VERSION' Usageview.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]') && \
+	DMG="build/Usageview-$${VERSION}.dmg" && \
 	echo "📎 Stapling notarization ticket to $${DMG}..." && \
 	xcrun stapler staple "$$DMG" && \
 	echo "📦 Re-uploading stapled DMG to GitHub Release v$${VERSION}..." && \
 	gh release upload "v$${VERSION}" "$$DMG" --clobber && \
 	echo "✅ Done! Release is fully notarized and stapled." && \
-	echo "   👉 https://github.com/ayangabryl/QuotaBar/releases/tag/v$${VERSION}"
+	echo "   👉 https://github.com/ayangabryl/Usageview/releases/tag/v$${VERSION}"
 
 # Clean build artifacts
 clean:
-	@xcodebuild -scheme QuotaBar clean 2>/dev/null || true
+	@xcodebuild -scheme Usageview clean 2>/dev/null || true
 	@rm -rf DerivedData build
 	@echo "✅ Cleaned"

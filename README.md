@@ -1,20 +1,20 @@
-# QuotaBar
+# Usageview
 
 **Keep your AI usage limits visible — right in the menu bar.**
 
-QuotaBar is a lightweight macOS app that shows how much of your AI quota you've used across Claude, GitHub Copilot, OpenAI, Gemini, and Kimi — with reset countdowns so you always know when you get more.
+Usageview is a lightweight macOS app that shows how much of your AI quota you've used across Claude, GitHub Copilot, OpenAI, Gemini, and Kimi — with reset countdowns so you always know when you get more.
 
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue?style=flat-square)](https://www.apple.com/macos/)
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?style=flat-square&logo=swift&logoColor=white)](https://swift.org)
 [![MIT License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-<!-- Add a screenshot here: ![QuotaBar Screenshot](screenshots/screenshot.png) -->
+<!-- Add a screenshot here: ![Usageview Screenshot](screenshots/screenshot.png) -->
 
 ---
 
-## Why QuotaBar?
+## Why Usageview?
 
-If you use AI coding tools, you've hit rate limits mid-flow. QuotaBar sits in your menu bar and shows:
+If you use AI coding tools, you've hit rate limits mid-flow. Usageview sits in your menu bar and shows:
 
 - **How much quota you've used** — per provider, per account
 - **When it resets** — countdown timers for each rate window
@@ -34,7 +34,7 @@ No Dock icon. No background noise. Just a glance at your menu bar.
 | **Gemini** | API key | Available models, Pro/Ultra detection |
 | **Kimi AI** | API key | Connection status |
 
-> Want another provider? [Open an issue](https://github.com/ayangabryl/QuotaBar/issues/new?template=new_provider.md) or [submit a PR](CONTRIBUTING.md#adding-a-new-provider).
+> Want another provider? [Open an issue](https://github.com/ayangabryl/Usageview/issues/new?template=new_provider.md) or [submit a PR](CONTRIBUTING.md#adding-a-new-provider).
 
 ---
 
@@ -45,9 +45,9 @@ No Dock icon. No background noise. Just a glance at your menu bar.
 ### Build from source
 
 ```bash
-git clone https://github.com/ayangabryl/QuotaBar.git
-cd QuotaBar
-open QuotaBar.xcodeproj
+git clone https://github.com/ayangabryl/Usageview.git
+cd Usageview
+open Usageview.xcodeproj
 ```
 
 Hit **⌘R** in Xcode to build and run.
@@ -56,7 +56,7 @@ Hit **⌘R** in Xcode to build and run.
 
 ## Getting Started
 
-1. **Click the menu bar icon** to open QuotaBar
+1. **Click the menu bar icon** to open Usageview
 2. **Add Account** → pick a provider
 3. **Sign in** via OAuth or paste an API key
 4. **Done** — your usage appears instantly
@@ -85,8 +85,8 @@ Switch between **expanded** (detailed cards) and **compact** (dense rows) views 
 We'd love your help! Whether it's a bug fix, new provider, or UI improvement.
 
 ```bash
-git clone https://github.com/ayangabryl/QuotaBar.git
-cd QuotaBar
+git clone https://github.com/ayangabryl/Usageview.git
+cd Usageview
 make setup    # installs SwiftLint + git hooks (one-time)
 make build    # build the project
 make lint     # check code style
@@ -101,9 +101,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide, including how to add 
 ## Architecture
 
 ```
-QuotaBar/
+Usageview/
 ├── App/                          # Entry point
-│   └── QuotaBarApp.swift
+│   └── UsageviewApp.swift
 ├── Models/                       # Data types
 │   ├── Account.swift
 │   ├── AuthMethod.swift

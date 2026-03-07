@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "54B185962F59CD0E0013A3ED"
-               BuildableName = "QuotaBar.app"
-               BlueprintName = "QuotaBar"
-               ReferencedContainer = "container:QuotaBar.xcodeproj">
+               BuildableName = "Usageview.app"
+               BlueprintName = "Usageview"
+               ReferencedContainer = "container:Usageview.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,13 +45,13 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "54B185962F59CD0E0013A3ED"
-            BuildableName = "QuotaBar.app"
-            BlueprintName = "QuotaBar"
-            ReferencedContainer = "container:QuotaBar.xcodeproj">
+            BuildableName = "Usageview.app"
+            BlueprintName = "Usageview"
+            ReferencedContainer = "container:Usageview.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <StoreKitConfigurationFileReference
-         identifier = "../../QuotaBar/Products.storekit/Configuration.storekit">
+         identifier = "../../Usageview/Products.storekit/Configuration.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
@@ -65,9 +65,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "54B185962F59CD0E0013A3ED"
-            BuildableName = "QuotaBar.app"
-            BlueprintName = "QuotaBar"
-            ReferencedContainer = "container:QuotaBar.xcodeproj">
+            BuildableName = "Usageview.app"
+            BlueprintName = "Usageview"
+            ReferencedContainer = "container:Usageview.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

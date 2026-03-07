@@ -18,7 +18,7 @@ What you expected to happen.
 
 **Environment**
 - macOS version:
-- QuotaBar version:
+- Usageview version:
 - Provider affected:
 
 **Screenshots**

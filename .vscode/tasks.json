@@ -2,89 +2,89 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -5"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | tail -5"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -5"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | tail -5"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -5"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | tail -5"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -5"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | tail -5"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -8"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | tail -8"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | tail -5"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | tail -5"
 		},
 		{
-			"label": "Build QuotaBar Errors",
+			"label": "Build Usageview Errors",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep 'error:' | head -10"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep 'error:' | head -10"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -5"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -5"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:|warning:.*OpenAI|warning:.*Account' | tail -20"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep -E 'BUILD|error:|warning:.*OpenAI|warning:.*Account' | tail -20"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep -E 'BUILD|error:' | tail -10"
 		},
 		{
-			"label": "Build QuotaBar",
+			"label": "Build Usageview",
 			"type": "shell",
-			"command": "xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep 'error:' | head -10"
-		},
-		{
-			"label": "Build Check",
-			"type": "shell",
-			"command": "cd /Users/ayangabryl/Documents/Swift/QuotaBar && xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'error:|warning:.*AccountStore|BUILD' | tail -15"
+			"command": "xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep 'error:' | head -10"
 		},
 		{
 			"label": "Build Check",
 			"type": "shell",
-			"command": "cd /Users/ayangabryl/Documents/Swift/QuotaBar && xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | tail -5"
+			"command": "cd /Users/ayangabryl/Documents/Swift/Usageview && xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep -E 'error:|warning:.*AccountStore|BUILD' | tail -15"
 		},
 		{
 			"label": "Build Check",
 			"type": "shell",
-			"command": "cd /Users/ayangabryl/Documents/Swift/QuotaBar && xcodebuild -scheme QuotaBar -configuration Debug build 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | tail -5"
+			"command": "cd /Users/ayangabryl/Documents/Swift/Usageview && xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | tail -5"
+		},
+		{
+			"label": "Build Check",
+			"type": "shell",
+			"command": "cd /Users/ayangabryl/Documents/Swift/Usageview && xcodebuild -scheme Usageview -configuration Debug build 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | tail -5"
 		}
 	]
 }

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 #───────────────────────────────────────────────────────────────────────────────
-# QuotaBar — DMG Installer Builder
+# Usageview — DMG Installer Builder
 #
 # Prerequisites:
 #   brew install create-dmg
@@ -12,8 +12,8 @@ set -euo pipefail
 #   ./Scripts/build-dmg.sh --skip-build  # package DMG from existing build
 #───────────────────────────────────────────────────────────────────────────────
 
-APP_NAME="QuotaBar"
-SCHEME="QuotaBar"
+APP_NAME="Usageview"
+SCHEME="Usageview"
 CONFIG="Release"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -22,14 +22,14 @@ DMG_DIR="${BUILD_DIR}/dmg"
 APP_PATH="${DMG_DIR}/${APP_NAME}.app"
 
 # Get version from Xcode project
-VERSION=$(grep 'MARKETING_VERSION' "${PROJECT_DIR}/QuotaBar.xcodeproj/project.pbxproj" \
+VERSION=$(grep 'MARKETING_VERSION' "${PROJECT_DIR}/Usageview.xcodeproj/project.pbxproj" \
     | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]')
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 DMG_PATH="${BUILD_DIR}/${DMG_NAME}"
 
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║           QuotaBar DMG Builder                   ║"
+echo "║           Usageview DMG Builder                   ║"
 echo "║           Version: ${VERSION}                        ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
@@ -122,7 +122,7 @@ rm -f "$DMG_PATH"
 # Build .icns from app icon PNGs for the volume icon (title bar)
 ICON_DIR="${BUILD_DIR}/icon.iconset"
 ICNS_PATH="${BUILD_DIR}/VolumeIcon.icns"
-ICON_SRC="${PROJECT_DIR}/QuotaBar/Assets.xcassets/AppIcon.appiconset"
+ICON_SRC="${PROJECT_DIR}/Usageview/Assets.xcassets/AppIcon.appiconset"
 mkdir -p "$ICON_DIR"
 cp "${ICON_SRC}/icon_16x16.png"     "${ICON_DIR}/icon_16x16.png"
 cp "${ICON_SRC}/icon_32x32.png"     "${ICON_DIR}/icon_16x16@2x.png"
