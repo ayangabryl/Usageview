@@ -59,7 +59,7 @@ struct SettingsView: View {
 
     private var accountsContent: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Rename your connected accounts. Changes are reflected in the menu bar.")
+            Text("Drag to reorder. Rename your connected accounts.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -78,11 +78,21 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
-                VStack(spacing: 6) {
-                    ForEach(store.accounts) { account in
+                let ordered = store.orderedAccounts
+                List {
+                    ForEach(ordered) { account in
                         accountRow(account)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0))
+                    }
+                    .onMove { from, to in
+                        store.ensureOrderIntegrity()
+                        store.accountOrder.move(fromOffsets: from, toOffset: to)
                     }
                 }
+                .listStyle(.plain)
+                .frame(minHeight: CGFloat(ordered.count) * 60, maxHeight: 400)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
     }
@@ -148,7 +158,7 @@ struct SettingsView: View {
                         : account.label
                     editingAccountId = account.id
                 } label: {
-                    Image(systemName: "pencil")
+                    Image(systemName: "character.cursor.ibeam")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .frame(width: 32, height: 32)

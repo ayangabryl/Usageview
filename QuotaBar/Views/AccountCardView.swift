@@ -132,16 +132,16 @@ struct AccountCardView: View {
                     }
                 } else if account.hasDualWindows {
                     // Claude rate windows
-                    if isRefreshing {
-                        HStack {
-                            ProgressView()
-                                .controlSize(.mini)
-                            Spacer()
-                        }
-                    }
-
                     if showWeeklyLimit {
                         // Show both windows, labeled
+                        if isRefreshing {
+                            HStack {
+                                ProgressView()
+                                    .controlSize(.mini)
+                                Spacer()
+                            }
+                        }
+
                         claudeRateRow(
                             label: "5h",
                             usage: account.fiveHourUsage ?? 0,
