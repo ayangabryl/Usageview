@@ -30,14 +30,12 @@ enum MenuBarIconRenderer {
     ///   - style: The icon style (white/colored/dynamic).
     ///   - isStale: Dims the icon when data is stale or errored.
     ///   - showCheckmark: Briefly overlays a green checkmark in the center.
-    ///   - refreshPhase: 0.0–1.0 animates a spinning dot during refresh. `nil` = no spinner.
     static func icon(
         percent: Double?,
         style: MenuBarIconStyle = .dynamic,
         customColor: NSColor? = nil,
         isStale: Bool = false,
-        showCheckmark: Bool = false,
-        refreshPhase: Double? = nil
+        showCheckmark: Bool = false
     ) -> NSImage {
         let size = NSSize(width: 18, height: 18)
         let noData = (percent == nil)
@@ -127,18 +125,6 @@ enum MenuBarIconRenderer {
                     fillColor.setFill()
                     NSBezierPath(ovalIn: dotRect).fill()
                 }
-            }
-
-            // --- Spinning dot during refresh ---
-            if let phase = refreshPhase {
-                let spinAngle = startAngle + phase * arcSpan
-                let spinRad = spinAngle * .pi / 180
-                let dotX = cx + radius * cos(spinRad)
-                let dotY = cy + radius * sin(spinRad)
-                let dotR: CGFloat = 2.0
-                let dotRect = NSRect(x: dotX - dotR, y: dotY - dotR, width: dotR * 2, height: dotR * 2)
-                NSColor.white.withAlphaComponent(0.9).setFill()
-                NSBezierPath(ovalIn: dotRect).fill()
             }
 
             // --- Green checkmark overlay (account linked) ---

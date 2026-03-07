@@ -24,9 +24,11 @@ final class AccountStore {
     var showMenuBarCheckmark: Bool = false
     private var checkmarkTask: Task<Void, Never>?
 
-    /// Animated refresh spinner phase (0.0–1.0). `nil` when not refreshing.
-    var refreshSpinnerPhase: Double?
-    private var spinnerTask: Task<Void, Never>?
+    /// Animated sweep override for the menu bar gauge. `nil` = use real value.
+    var sweepOverridePercent: Double?
+    private var sweepTask: Task<Void, Never>?
+
+
 
     /// The account pinned to the menu bar icon. When set, the gauge tracks this account only.
     var pinnedAccountId: UUID? {
@@ -235,15 +237,49 @@ final class AccountStore {
         }
     }
 
-    /// Briefly show a green checkmark on the menu bar icon, then revert.
+    /// Briefly show a green checkmark, then sweep the gauge from 0 → actual%.
     private func flashMenuBarCheckmark() {
         checkmarkTask?.cancel()
+        sweepTask?.cancel()
         showMenuBarCheckmark = true
+        sweepOverridePercent = 0  // Lock gauge at 0% immediately to prevent flash
         dataVersion += 1
+
         checkmarkTask = Task {
-            try? await Task.sleep(for: .seconds(2))
+            // Show checkmark for 1.5s
+            try? await Task.sleep(for: .seconds(1.5))
             guard !Task.isCancelled else { return }
             showMenuBarCheckmark = false
+            dataVersion += 1
+
+            // Now sweep from 0 → actual percent
+            let targetPercent = menuBarPercent ?? 0
+            await animateSweep(to: targetPercent)
+        }
+    }
+
+    /// Animate the gauge fill from 0% to the target over ~0.8s with ease-out.
+    private func animateSweep(to target: Double) async {
+        sweepTask?.cancel()
+        let duration: Double = 0.8  // seconds
+        let fps: Double = 30
+        let totalFrames = Int(duration * fps)
+
+        sweepOverridePercent = 0
+        dataVersion += 1
+
+        sweepTask = Task {
+            for frame in 1...totalFrames {
+                guard !Task.isCancelled else { break }
+                try? await Task.sleep(for: .milliseconds(Int(1000 / fps)))
+                let progress = Double(frame) / Double(totalFrames)
+                // Ease-out cubic: fast start, gentle stop
+                let eased = 1 - pow(1 - progress, 3)
+                sweepOverridePercent = target * eased
+                dataVersion += 1
+            }
+            // Snap to real value and clear override
+            sweepOverridePercent = nil
             dataVersion += 1
         }
     }
@@ -499,38 +535,9 @@ final class AccountStore {
     }
 
     func refreshAll() async {
-        startRefreshSpinner()
         for account in accounts where isConnected(for: account) {
             await refreshAccount(account)
         }
-        stopRefreshSpinner()
-    }
-
-    // MARK: - Refresh Spinner
-
-    /// Start a spinning dot animation on the menu bar icon.
-    private func startRefreshSpinner() {
-        spinnerTask?.cancel()
-        refreshSpinnerPhase = 0
-        dataVersion += 1
-        spinnerTask = Task {
-            var phase = 0.0
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(40))  // ~25fps
-                phase += 0.04
-                if phase > 1.0 { phase = 0.0 }
-                refreshSpinnerPhase = phase
-                dataVersion += 1
-            }
-        }
-    }
-
-    /// Stop the refresh spinner.
-    private func stopRefreshSpinner() {
-        spinnerTask?.cancel()
-        spinnerTask = nil
-        refreshSpinnerPhase = nil
-        dataVersion += 1
     }
 
     // MARK: - Status
@@ -681,12 +688,11 @@ final class AccountStore {
     /// Generate the current dynamic menu bar icon
     var menuBarIcon: NSImage {
         MenuBarIconRenderer.icon(
-            percent: menuBarPercent,
+            percent: sweepOverridePercent ?? menuBarPercent,
             style: menuBarIconStyle,
             customColor: menuBarIconStyle == .colored ? NSColor(menuBarIconColor) : nil,
             isStale: accounts.isEmpty || accounts.allSatisfy { !isConnected(for: $0) },
-            showCheckmark: showMenuBarCheckmark,
-            refreshPhase: refreshSpinnerPhase
+            showCheckmark: showMenuBarCheckmark
         )
     }
 }
