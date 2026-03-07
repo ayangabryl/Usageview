@@ -158,29 +158,25 @@ create-dmg \
     "$DMG_PATH" \
     "$DMG_DIR"
 
-# ── Step 4: Notarize (optional) ──────────────────────────────────────────────
+# ── Step 4: Submit for notarization (async) ─────────────────────────────────
 if [[ -n "${APPLE_ID:-}" && -n "${APPLE_APP_PASSWORD:-}" && -n "${TEAM_ID:-}" ]]; then
-    echo "📤 Submitting DMG for notarization..."
+    echo "📤 Submitting DMG for notarization (async)..."
     SUBMIT_OUTPUT=$(xcrun notarytool submit "$DMG_PATH" \
         --apple-id "$APPLE_ID" \
         --password "$APPLE_APP_PASSWORD" \
-        --team-id "$TEAM_ID" \
-        --wait 2>&1) || true
+        --team-id "$TEAM_ID" 2>&1)
 
     echo "$SUBMIT_OUTPUT"
 
     SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | grep "id:" | head -1 | awk '{print $2}')
 
-    if echo "$SUBMIT_OUTPUT" | grep -q "status: Accepted"; then
-        echo "📎 Stapling notarization ticket..."
-        xcrun stapler staple "$DMG_PATH"
-        echo "✅ Notarization complete"
+    if [[ -n "$SUBMISSION_ID" ]]; then
+        echo ""
+        echo "📋 Submission ID: ${SUBMISSION_ID}"
+        echo "   Check status:  make notarize-status"
+        echo "   Staple when ready: make staple"
     else
-        echo "❌ Notarization failed! Fetching log..."
-        xcrun notarytool log "$SUBMISSION_ID" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_PASSWORD" \
-            --team-id "$TEAM_ID" 2>&1 || true
+        echo "❌ Notarization submission failed"
         exit 1
     fi
 else

@@ -1,4 +1,4 @@
-.PHONY: setup lint fix build release dmg tag clean
+.PHONY: setup lint fix build release dmg tag clean notarize-status staple
 
 # One-time setup: installs SwiftLint and git hooks
 setup:
@@ -64,6 +64,24 @@ tag:
 	git push origin "v$$VERSION" && \
 	echo "✅ Pushed v$$VERSION" && \
 	echo "   👉 https://github.com/ayangabryl/QuotaBar/releases"
+
+# Check notarization status
+notarize-status:
+	@xcrun notarytool history \
+		--apple-id "$${APPLE_ID}" \
+		--password "$${APPLE_APP_PASSWORD}" \
+		--team-id "$${TEAM_ID}" 2>&1 | head -20
+
+# Staple notarization ticket and re-upload to GitHub Release
+staple:
+	@VERSION=$$(grep 'MARKETING_VERSION' QuotaBar.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //' | sed 's/;//' | tr -d '[:space:]') && \
+	DMG="build/QuotaBar-$${VERSION}.dmg" && \
+	echo "📎 Stapling notarization ticket to $${DMG}..." && \
+	xcrun stapler staple "$$DMG" && \
+	echo "📦 Re-uploading stapled DMG to GitHub Release v$${VERSION}..." && \
+	gh release upload "v$${VERSION}" "$$DMG" --clobber && \
+	echo "✅ Done! Release is fully notarized and stapled." && \
+	echo "   👉 https://github.com/ayangabryl/QuotaBar/releases/tag/v$${VERSION}"
 
 # Clean build artifacts
 clean:
