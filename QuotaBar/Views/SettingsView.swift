@@ -15,13 +15,13 @@ struct SettingsView: View {
     enum SettingsTab: String, CaseIterable {
         case accounts = "Accounts"
         case general = "General"
-        case advanced = "Advanced"
+        case about = "About"
 
         var icon: String {
             switch self {
             case .accounts: "person.2.fill"
             case .general: "gearshape.fill"
-            case .advanced: "wrench.and.screwdriver.fill"
+            case .about: "info.circle"
             }
         }
     }
@@ -44,9 +44,9 @@ struct SettingsView: View {
                 }
             }
 
-            Tab(SettingsTab.advanced.rawValue, systemImage: SettingsTab.advanced.icon, value: .advanced) {
+            Tab(SettingsTab.about.rawValue, systemImage: SettingsTab.about.icon, value: .about) {
                 ScrollView {
-                    advancedContent
+                    aboutContent
                         .padding(24)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
@@ -276,9 +276,9 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Advanced Content
+    // MARK: - About Content
 
-    private var advancedContent: some View {
+    private var aboutContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Check for Updates
             settingsRow(icon: "arrow.triangle.2.circlepath", title: "Check for Updates", subtitle: "Download and install the latest version") {
