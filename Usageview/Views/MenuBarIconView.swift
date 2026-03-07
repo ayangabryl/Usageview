@@ -6,6 +6,7 @@ enum MenuBarIconStyle: String, CaseIterable, Codable {
     case white = "White"
     case colored = "Colored"
     case dynamic = "Dynamic"
+    case plain = "Plain"
 
     var displayName: String { rawValue }
 }
@@ -64,7 +65,10 @@ enum MenuBarIconRenderer {
             trackPath.lineCapStyle = .round
 
             let trackColor: NSColor
-            if noData {
+            if style == .plain {
+                // Plain style: solid white logo, no progress
+                trackColor = .white.withAlphaComponent(0.85)
+            } else if noData {
                 // Solid white gauge when no accounts — always clearly visible
                 trackColor = .white.withAlphaComponent(0.85)
             } else {
@@ -76,13 +80,15 @@ enum MenuBarIconRenderer {
                     trackColor = base.withAlphaComponent(0.25 * opacity)
                 case .dynamic:
                     trackColor = .labelColor.withAlphaComponent(0.15 * opacity)
+                case .plain:
+                    trackColor = .white // unreachable, handled above
                 }
             }
             trackColor.setStroke()
             trackPath.stroke()
 
-            // --- Filled arc ---
-            if clamped > 0 {
+            // --- Filled arc (skip for plain style) ---
+            if clamped > 0 && style != .plain {
                 let fillEndDeg = startAngle + clamped * arcSpan
 
                 let fillPath = NSBezierPath()
@@ -111,6 +117,8 @@ enum MenuBarIconRenderer {
                     } else {
                         fillColor = .systemGreen.withAlphaComponent(opacity)
                     }
+                case .plain:
+                    fillColor = .white // unreachable — plain skips fill
                 }
                 fillColor.setStroke()
                 fillPath.stroke()
@@ -144,7 +152,7 @@ enum MenuBarIconRenderer {
 
             return true
         }
-        image.isTemplate = false
+        image.isTemplate = (style == .plain)
         return image
     }
 

@@ -210,7 +210,7 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .frame(width: 200)
+                    .frame(width: 260)
                 }
             }
 

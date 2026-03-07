@@ -163,6 +163,7 @@ struct AccountCardView: View {
                                 RoundedRectangle(cornerRadius: 3)
                                     .fill(rateBarColor(account.fiveHourUsage ?? 0))
                                     .frame(width: max(0, geo.size.width * fiveHourPct))
+                                    .animation(.easeInOut(duration: 0.5), value: fiveHourPct)
                             }
                         }
                         .frame(height: 5)
@@ -222,6 +223,7 @@ struct AccountCardView: View {
                             RoundedRectangle(cornerRadius: 3)
                                 .fill(kimiBarColor(weeklyPct))
                                 .frame(width: max(0, geo.size.width * weeklyPct))
+                                .animation(.easeInOut(duration: 0.5), value: weeklyPct)
                         }
                     }
                     .frame(height: 5)
@@ -255,6 +257,7 @@ struct AccountCardView: View {
                             RoundedRectangle(cornerRadius: 3)
                                 .fill(barColor)
                                 .frame(width: max(0, geo.size.width * account.usagePercentage))
+                                .animation(.easeInOut(duration: 0.5), value: account.usagePercentage)
                         }
                     }
                     .frame(height: 5)
@@ -325,6 +328,7 @@ struct AccountCardView: View {
                     RoundedRectangle(cornerRadius: 2.5)
                         .fill(rateBarColor(usage))
                         .frame(width: max(0, geo.size.width * min(usage / 100, 1.0)))
+                        .animation(.easeInOut(duration: 0.5), value: usage)
                 }
             }
             .frame(height: 4)
@@ -360,6 +364,7 @@ struct AccountCardView: View {
                     RoundedRectangle(cornerRadius: 2.5)
                         .fill(rateBarColor(pct * 100))
                         .frame(width: max(0, geo.size.width * pct))
+                        .animation(.easeInOut(duration: 0.5), value: pct)
                 }
             }
             .frame(height: 4)
@@ -517,6 +522,7 @@ struct CompactAccountRow: View {
                                     RoundedRectangle(cornerRadius: 2)
                                         .fill(compactRateBarColor(account.fiveHourUsage ?? 0))
                                         .frame(width: max(0, geo.size.width * fiveHourPct))
+                                        .animation(.easeInOut(duration: 0.5), value: fiveHourPct)
                                 }
                             }
                             .frame(maxWidth: 60, maxHeight: 4)
@@ -545,6 +551,7 @@ struct CompactAccountRow: View {
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(compactKimiBarColor(weeklyPct))
                                     .frame(width: max(0, geo.size.width * weeklyPct))
+                                    .animation(.easeInOut(duration: 0.5), value: weeklyPct)
                             }
                         }
                         .frame(maxWidth: 60, maxHeight: 4)
@@ -562,6 +569,7 @@ struct CompactAccountRow: View {
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(barColor)
                                     .frame(width: max(0, geo.size.width * account.usagePercentage))
+                                    .animation(.easeInOut(duration: 0.5), value: account.usagePercentage)
                             }
                         }
                         .frame(maxWidth: 60, maxHeight: 4)
@@ -656,6 +664,7 @@ struct CompactAccountRow: View {
                     RoundedRectangle(cornerRadius: 1.5)
                         .fill(compactRateBarColor(usage))
                         .frame(width: max(0, geo.size.width * pct))
+                        .animation(.easeInOut(duration: 0.5), value: pct)
                 }
             }
             .frame(maxWidth: 40, maxHeight: 3)
