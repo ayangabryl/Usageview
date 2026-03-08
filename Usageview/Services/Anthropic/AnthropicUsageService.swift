@@ -30,14 +30,18 @@ final class AnthropicUsageService: Sendable {
 
         let url = URL(string: "https://api.anthropic.com/api/oauth/usage")!
 
+        // Detect Claude Code version for User-Agent (matches what Claude Code CLI sends)
+        let claudeVersion = Self.detectClaudeCodeVersion() ?? "2.1.0"
+
         // Retry up to 5 times on 429 (rate limit on the usage endpoint itself)
         for attempt in 0..<5 {
             var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData)
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
-            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
+            // The usage API requires a claude-code User-Agent to return proper data
+            request.setValue("claude-code/\(claudeVersion)", forHTTPHeaderField: "User-Agent")
             request.setValue("no-cache, no-store", forHTTPHeaderField: "Cache-Control")
             request.setValue("no-cache", forHTTPHeaderField: "Pragma")
 
@@ -140,6 +144,75 @@ final class AnthropicUsageService: Sendable {
             planTier: planTier,
             organizationName: orgName
         )
+    }
+
+    // MARK: - Claude Code Version Detection
+
+    /// Detect installed Claude Code CLI version for User-Agent header.
+    /// Returns nil if not installed or detection fails.
+    private static func detectClaudeCodeVersion() -> String? {
+        // Try to find the claude binary
+        let possiblePaths = [
+            "/usr/local/bin/claude",
+            "\(NSHomeDirectory())/.claude/local/claude",
+            "/opt/homebrew/bin/claude"
+        ]
+        
+        // Also check PATH via /usr/bin/which
+        let whichProc = Process()
+        whichProc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        whichProc.arguments = ["claude"]
+        let whichPipe = Pipe()
+        whichProc.standardOutput = whichPipe
+        whichProc.standardError = Pipe()
+        
+        var claudePath: String?
+        if let _ = try? whichProc.run() {
+            whichProc.waitUntilExit()
+            if whichProc.terminationStatus == 0 {
+                let data = whichPipe.fileHandleForReading.readDataToEndOfFile()
+                claudePath = String(data: data, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+        
+        if claudePath == nil || claudePath!.isEmpty {
+            claudePath = possiblePaths.first { FileManager.default.isExecutableFile(atPath: $0) }
+        }
+        
+        guard let path = claudePath, !path.isEmpty else { return nil }
+        
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: path)
+        proc.arguments = ["--version"]
+        let pipe = Pipe()
+        proc.standardOutput = pipe
+        proc.standardError = Pipe()
+        
+        do {
+            try proc.run()
+            // Timeout after 3 seconds
+            let deadline = Date().addingTimeInterval(3.0)
+            while proc.isRunning, Date() < deadline {
+                usleep(50000)
+            }
+            if proc.isRunning {
+                proc.terminate()
+                usleep(200000)
+                if proc.isRunning { kill(proc.processIdentifier, SIGKILL) }
+            }
+            
+            guard proc.terminationStatus == 0 else { return nil }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8) else { return nil }
+            let version = output
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .split(whereSeparator: \.isWhitespace).first
+                .map(String.init)
+            return version?.isEmpty == true ? nil : version
+        } catch {
+            return nil
+        }
     }
 
 }
