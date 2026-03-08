@@ -16,46 +16,43 @@ final class GeminiAuthService: Sendable {
     // MARK: - Multi-Account Auth
 
     func isAuthenticated(for accountId: UUID) -> Bool {
-        // Check API key first, then OAuth marker
         loadToken(key: apiKey(for: accountId)) != nil
-            || loadToken(key: oauthMarker(for: accountId)) != nil
+            || oauthService.hasCredentials(for: accountId)
     }
 
-    /// Whether this account uses Gemini CLI OAuth
+    /// Whether this account uses Google OAuth
     func isOAuthAccount(for accountId: UUID) -> Bool {
-        loadToken(key: oauthMarker(for: accountId)) != nil
+        oauthService.hasCredentials(for: accountId)
     }
 
     /// Store the user-provided API key
     func saveAPIKey(_ key: String, for accountId: UUID) -> GeminiAccountInfo {
         saveToken(key: apiKey(for: accountId), value: key)
-        // Remove OAuth marker if switching
-        removeToken(key: oauthMarker(for: accountId))
+        // Remove OAuth tokens if switching
+        oauthService.removeTokens(for: accountId)
         let masked = key.count > 8
             ? String(key.prefix(8)) + "..."
             : key
         return GeminiAccountInfo(name: masked)
     }
 
-    /// Connect via Gemini CLI OAuth (reads ~/.gemini/oauth_creds.json)
-    func connectOAuth(for accountId: UUID) async throws -> GeminiAccountInfo {
-        guard oauthService.hasOAuthCredentials() else {
-            throw GeminiOAuthError.notLoggedIn
-        }
-
-        // Test that we can actually fetch quota
-        let snapshot = try await oauthService.fetchQuota()
-
-        // Store an OAuth marker so we know this account uses OAuth
-        saveToken(key: oauthMarker(for: accountId), value: "oauth-connected")
+    /// Start direct Google OAuth browser flow
+    func startOAuth(for accountId: UUID) async throws -> GeminiAccountInfo {
+        let (code, codeVerifier, redirectURI) = try await oauthService.startOAuthFlow()
+        let info = try await oauthService.exchangeCodeForTokens(
+            code: code,
+            codeVerifier: codeVerifier,
+            redirectURI: redirectURI,
+            for: accountId
+        )
         // Remove API key if switching
         removeToken(key: apiKey(for: accountId))
+        return info
+    }
 
-        return GeminiAccountInfo(
-            name: snapshot.accountEmail ?? snapshot.accountPlan ?? "Gemini Pro",
-            email: snapshot.accountEmail,
-            isOAuth: true
-        )
+    /// Cancel any in-progress OAuth flow
+    func cancelOAuth() {
+        oauthService.cancelOAuth()
     }
 
     /// Retrieve the stored API key
@@ -65,17 +62,13 @@ final class GeminiAuthService: Sendable {
 
     func disconnect(accountId: UUID) {
         removeToken(key: apiKey(for: accountId))
-        removeToken(key: oauthMarker(for: accountId))
+        oauthService.removeTokens(for: accountId)
     }
 
     // MARK: - Key Helpers
 
     private func apiKey(for id: UUID) -> String {
         "com.ayangabryl.usage.gemini-apikey-\(id.uuidString)"
-    }
-
-    private func oauthMarker(for id: UUID) -> String {
-        "com.ayangabryl.usage.gemini-oauth-\(id.uuidString)"
     }
 
     // MARK: - Keychain Storage

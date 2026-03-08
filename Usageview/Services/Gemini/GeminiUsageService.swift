@@ -44,12 +44,12 @@ final class GeminiUsageService: Sendable {
         self.authService = authService
     }
 
-    /// Fetch real quota data using Gemini CLI OAuth credentials
+    /// Fetch real quota data using Google OAuth credentials
     func fetchOAuthUsage(for accountId: UUID) async -> GeminiOAuthUsageData? {
         guard authService.isOAuthAccount(for: accountId) else { return nil }
 
         do {
-            let snapshot = try await authService.oauthService.fetchQuota()
+            let snapshot = try await authService.oauthService.fetchQuota(for: accountId)
 
             let proUsed = snapshot.proPercentLeft.map { 100 - $0 } ?? 0
             let flashUsed = snapshot.flashPercentLeft.map { 100 - $0 }

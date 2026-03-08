@@ -377,9 +377,9 @@ struct MenuBarContentView: View {
                         }
                     } label: {
                         HStack(spacing: 8) {
-                            Image(systemName: serviceType == .gemini ? "terminal" : "person.badge.key")
+                            Image(systemName: "person.badge.key")
                                 .font(.subheadline)
-                            Text(serviceType == .gemini ? "Gemini CLI (OAuth)" : "Sign in with OAuth")
+                            Text(serviceType == .gemini ? "Sign in with Google" : "Sign in with OAuth")
                                 .font(.subheadline.weight(.medium))
                         }
                         .frame(maxWidth: .infinity)
@@ -567,7 +567,7 @@ struct MenuBarContentView: View {
         )
     }
 
-    // MARK: - Gemini Connect (OAuth via CLI)
+    // MARK: - Gemini Connect (Google OAuth)
 
     private func geminiOAuthConnectView(accountId: UUID) -> some View {
         GeminiOAuthConnectView(
@@ -588,6 +588,7 @@ struct MenuBarContentView: View {
                     }
                     goHome()
                 } else {
+                    store.geminiAuth.cancelOAuth()
                     store.removeAccount(id: accountId)
                     goBack()
                 }
@@ -1922,7 +1923,7 @@ struct KimiInlineConnectView: View {
     }
 }
 
-// MARK: - Gemini OAuth Connect (CLI Credentials)
+// MARK: - Gemini OAuth Connect (Google Account)
 
 struct GeminiOAuthConnectView: View {
     let authService: GeminiAuthService
@@ -1938,10 +1939,12 @@ struct GeminiOAuthConnectView: View {
             ServiceIconView(serviceType: .gemini, avatarURL: nil, size: 48)
 
             VStack(spacing: 6) {
-                Text("Connect via Gemini CLI")
+                Text("Sign in with Google")
                     .font(.subheadline.weight(.medium))
 
-                Text("Uses your Gemini CLI OAuth credentials\nto show real-time quota & usage data.")
+                Text(isConnecting
+                    ? "Complete sign-in in your browser.\nThis window will update automatically."
+                    : "Sign in with your Google account\nto show real-time quota & usage data.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -1962,8 +1965,10 @@ struct GeminiOAuthConnectView: View {
                     errorMessage = nil
                     Task {
                         do {
-                            let info = try await authService.connectOAuth(for: accountId)
+                            let info = try await authService.startOAuth(for: accountId)
                             onDone(info)
+                        } catch is CancellationError {
+                            // User cancelled
                         } catch {
                             errorMessage = error.localizedDescription
                         }
@@ -1975,10 +1980,10 @@ struct GeminiOAuthConnectView: View {
                             ProgressView()
                                 .controlSize(.small)
                         } else {
-                            Image(systemName: "terminal")
+                            Image(systemName: "person.badge.key")
                                 .font(.subheadline)
                         }
-                        Text(isConnecting ? "Connecting..." : "Connect")
+                        Text(isConnecting ? "Waiting for browser..." : "Sign in with Google")
                             .font(.subheadline.weight(.medium))
                     }
                     .frame(maxWidth: .infinity)
@@ -1990,19 +1995,11 @@ struct GeminiOAuthConnectView: View {
                 .padding(.horizontal, 16)
             }
 
-            VStack(spacing: 4) {
-                Text("Requires the Gemini CLI to be installed and authenticated.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-
-                Link(destination: URL(string: "https://github.com/google-gemini/gemini-cli")!) {
-                    Text("Install Gemini CLI →")
-                        .font(.caption)
-                        .foregroundStyle(.blue)
-                }
-            }
-            .padding(.horizontal, 16)
+            Text("Opens Google sign-in in your default browser.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
 
             Spacer().frame(height: 4)
         }
