@@ -22,7 +22,8 @@ final class AnthropicUsageService: Sendable {
     }
 
     func fetchUsage(for accountId: UUID) async -> ClaudeUsageData? {
-        guard let token = await authService.getValidToken(for: accountId) else {
+        // Prefer Claude Code CLI credentials for most accurate usage data
+        guard let token = await authService.getValidTokenPreferCLI(for: accountId) else {
             logger.error("No valid token for account \(accountId.uuidString)")
             return nil
         }

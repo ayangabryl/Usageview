@@ -2,10 +2,20 @@ import Foundation
 import Security
 import CryptoKit
 import AppKit
+import os
+
+private let authLogger = Logger(subsystem: "com.ayangabryl.usage", category: "AnthropicAuth")
 
 struct ClaudeAccountInfo: Sendable {
     var email: String?
     var name: String?
+}
+
+/// Credentials read from the Claude Code CLI's macOS Keychain entry.
+struct ClaudeCLICredentials: Sendable {
+    var accessToken: String
+    var refreshToken: String?
+    var expiresAt: Double? // seconds since 1970
 }
 
 @Observable
@@ -15,6 +25,8 @@ final class AnthropicAuthService: Sendable {
 
     private let clientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
     private let redirectURI = "https://console.anthropic.com/oauth/code/callback"
+    /// Official token endpoint used by Claude Code CLI
+    private let tokenRefreshURL = "https://platform.claude.com/v1/oauth/token"
 
     private var pkceVerifiers: [UUID: String] = [:]
 
@@ -23,6 +35,157 @@ final class AnthropicAuthService: Sendable {
     func isAuthenticated(for accountId: UUID) -> Bool {
         loadToken(key: refreshKey(for: accountId)) != nil
             || loadToken(key: apiKeyKey(for: accountId)) != nil
+    }
+
+    // MARK: - Claude Code CLI Credentials
+
+    /// Read OAuth credentials stored by Claude Code CLI in macOS Keychain
+    func readClaudeCLICredentials() -> ClaudeCLICredentials? {
+        let serviceNames = [
+            "Claude Code-credentials",
+            // Fallback: hashed config dir variant
+        ]
+
+        for serviceName in serviceNames {
+            if let creds = readKeychainGenericPassword(service: serviceName) {
+                return creds
+            }
+        }
+
+        // Also try reading from ~/.claude/.credentials.json as fallback
+        return readClaudeFileCredentials()
+    }
+
+    private func readKeychainGenericPassword(service: String) -> ClaudeCLICredentials? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess, let data = result as? Data else {
+            authLogger.debug("Keychain read for '\(service)' returned status \(status)")
+            return nil
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            authLogger.debug("Keychain data for '\(service)' is not valid JSON")
+            return nil
+        }
+
+        // Claude Code stores credentials under "claudeAiOauth" nested key
+        let creds = (json["claudeAiOauth"] as? [String: Any]) ?? json
+
+        guard let accessToken = creds["accessToken"] as? String, !accessToken.isEmpty else {
+            authLogger.debug("No accessToken in Keychain entry '\(service)'")
+            return nil
+        }
+
+        let refreshToken = creds["refreshToken"] as? String
+        let expiresAt = creds["expiresAt"] as? Double
+
+        authLogger.info("Read Claude CLI credentials from Keychain '\(service)'")
+        return ClaudeCLICredentials(
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            expiresAt: expiresAt
+        )
+    }
+
+    private func readClaudeFileCredentials() -> ClaudeCLICredentials? {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let credPath = home.appendingPathComponent(".claude/.credentials.json")
+
+        guard let data = try? Data(contentsOf: credPath),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+
+        let creds = (json["claudeAiOauth"] as? [String: Any]) ?? json
+
+        guard let accessToken = creds["accessToken"] as? String, !accessToken.isEmpty else {
+            return nil
+        }
+
+        authLogger.info("Read Claude CLI credentials from file")
+        return ClaudeCLICredentials(
+            accessToken: accessToken,
+            refreshToken: creds["refreshToken"] as? String,
+            expiresAt: creds["expiresAt"] as? Double
+        )
+    }
+
+    /// Refresh a Claude CLI token using the official platform.claude.com endpoint
+    func refreshCLIToken(_ refreshToken: String) async -> ClaudeCLICredentials? {
+        guard let url = URL(string: tokenRefreshURL) else { return nil }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let body = [
+            "grant_type=refresh_token",
+            "refresh_token=\(refreshToken)",
+            "client_id=\(clientId)"
+        ].joined(separator: "&")
+        request.httpBody = Data(body.utf8)
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let newAccess = json["access_token"] as? String
+            else {
+                authLogger.error("CLI token refresh failed")
+                return nil
+            }
+
+            let newRefresh = json["refresh_token"] as? String ?? refreshToken
+            let expiresIn = json["expires_in"] as? Double
+            let expiresAt = expiresIn.map { Date.now.timeIntervalSince1970 + $0 }
+
+            authLogger.info("CLI token refreshed successfully")
+            return ClaudeCLICredentials(
+                accessToken: newAccess,
+                refreshToken: newRefresh,
+                expiresAt: expiresAt
+            )
+        } catch {
+            authLogger.error("CLI token refresh error: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Get a valid access token for usage API, preferring Claude CLI credentials
+    func getValidTokenPreferCLI(for accountId: UUID) async -> String? {
+        // First, try Claude Code CLI credentials (most accurate usage data)
+        if let cliCreds = readClaudeCLICredentials() {
+            let now = Date.now.timeIntervalSince1970
+
+            // Check if token is still valid
+            if let expiresAt = cliCreds.expiresAt, expiresAt > now {
+                authLogger.info("Using valid Claude CLI token for usage")
+                return cliCreds.accessToken
+            }
+
+            // Token expired, try to refresh
+            if let refreshToken = cliCreds.refreshToken {
+                if let refreshed = await refreshCLIToken(refreshToken) {
+                    authLogger.info("Using refreshed Claude CLI token for usage")
+                    return refreshed.accessToken
+                }
+            }
+
+            // Token might still work even if we can't verify expiry
+            if cliCreds.expiresAt == nil {
+                authLogger.info("Using Claude CLI token (no expiry info) for usage")
+                return cliCreds.accessToken
+            }
+        }
+
+        // Fall back to our own OAuth token
+        return await getValidToken(for: accountId)
     }
 
     // MARK: - API Key Auth
@@ -92,7 +255,7 @@ final class AnthropicAuthService: Sendable {
         let code = rawCode.split(separator: "#").first.map(String.init) ?? rawCode
         let state = rawCode.contains("#") ? String(rawCode.split(separator: "#").last ?? "") : nil
 
-        let url = URL(string: "https://console.anthropic.com/v1/oauth/token")!
+        let url = URL(string: tokenRefreshURL)!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -282,7 +445,7 @@ final class AnthropicAuthService: Sendable {
         }
 
         // Token expired, refresh it
-        let url = URL(string: "https://console.anthropic.com/v1/oauth/token")!
+        let url = URL(string: tokenRefreshURL)!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
