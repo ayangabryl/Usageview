@@ -592,15 +592,19 @@ final class AccountStore {
         refreshingIds.contains(account.id)
     }
 
-    var menuBarLabel: String {
-        let connected = accounts.filter { isConnected(for: $0) }
-        guard !connected.isEmpty else { return "—" }
-        let atLimit = connected.filter(\.isAtLimit)
-        if !atLimit.isEmpty {
-            return "\(atLimit.count) at limit"
+    /// The account whose usage drives the menu bar display.
+    var menuBarAccount: Account? {
+        if let pinnedId = pinnedAccountId,
+           let account = accounts.first(where: { $0.id == pinnedId }) {
+            return account
         }
-        let maxUsage = connected.map(\.usagePercentage).max() ?? 0
-        return "\(Int(maxUsage * 100))%"
+        return orderedAccounts.first(where: { isConnected(for: $0) && !$0.isStatusOnly })
+    }
+
+    var menuBarLabel: String {
+        guard let target = menuBarAccount else { return "—" }
+        let pct = accountUsagePercent(target)
+        return "\(Int(pct))%"
     }
 
     func toggleViewMode() {
@@ -692,14 +696,17 @@ final class AccountStore {
     }
 
     /// The percentage to display in the menu bar gauge.
-    /// If a specific account is pinned, use that account's usage; otherwise use worst-of-all.
+    /// If a specific account is pinned, use that; otherwise use the first ordered account.
     var menuBarPercent: Double? {
         if let pinnedId = pinnedAccountId,
-           let account = accounts.first(where: { $0.id == pinnedId }),
-           isConnected(for: account) {
+           let account = accounts.first(where: { $0.id == pinnedId }) {
             return accountUsagePercent(account)
         }
-        return worstUsagePercent
+        // Fallback: first ordered, connected, non-status-only account
+        if let first = orderedAccounts.first(where: { isConnected(for: $0) && !$0.isStatusOnly }) {
+            return accountUsagePercent(first)
+        }
+        return nil
     }
 
     /// Whether the given account is pinned to the menu bar icon.
