@@ -154,16 +154,22 @@ struct AccountCardView: View {
                             resetDate: account.sevenDayResetDate
                         )
                     } else {
-                        // Show only 5-hour window — same layout as GitHub
-                        let fiveHourPct = min((account.fiveHourUsage ?? 0) / 100.0, 1.0)
+                        // Show binding constraint (whichever window is fuller)
+                        let fiveHour = account.fiveHourUsage ?? 0
+                        let sevenDay = account.sevenDayUsage ?? 0
+                        let bindingUsage = max(fiveHour, sevenDay)
+                        let bindingPct = min(bindingUsage / 100.0, 1.0)
+                        let bindingResetDate = sevenDay >= fiveHour ? account.sevenDayResetDate : account.fiveHourResetDate
+                        let bindingMaxHours: Double = sevenDay >= fiveHour ? 192 : (account.serviceType == .gemini ? 25 : 6)
+
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 3)
                                     .fill(.primary.opacity(0.08))
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(rateBarColor(account.fiveHourUsage ?? 0))
-                                    .frame(width: max(0, geo.size.width * fiveHourPct))
-                                    .animation(.easeInOut(duration: 0.5), value: fiveHourPct)
+                                    .fill(rateBarColor(bindingUsage))
+                                    .frame(width: max(0, geo.size.width * bindingPct))
+                                    .animation(.easeInOut(duration: 0.5), value: bindingPct)
                             }
                         }
                         .frame(height: 5)
@@ -175,14 +181,14 @@ struct AccountCardView: View {
                                     .padding(.trailing, 6)
                             }
 
-                            Text("\(Int(account.fiveHourUsage ?? 0))% used")
+                            Text("\(Int(bindingUsage))% used")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
 
                             Spacer()
 
-                            if Account.isResetReasonable(account.fiveHourResetDate, maxHours: account.serviceType == .gemini ? 25 : 6) {
-                                Text("resets \(Account.resetLabel(for: account.fiveHourResetDate))")
+                            if Account.isResetReasonable(bindingResetDate, maxHours: bindingMaxHours) {
+                                Text("resets \(Account.resetLabel(for: bindingResetDate))")
                                     .font(.caption)
                                     .foregroundStyle(.tertiary)
                             }
@@ -513,27 +519,33 @@ struct CompactAccountRow: View {
                             }
                             .frame(maxWidth: 120)
                         } else {
-                            // Single 5-hour bar — same as GitHub layout
-                            let fiveHourPct = min((account.fiveHourUsage ?? 0) / 100.0, 1.0)
+                            // Single bar — binding constraint (whichever window is fuller)
+                            let fiveHour = account.fiveHourUsage ?? 0
+                            let sevenDay = account.sevenDayUsage ?? 0
+                            let bindingUsage = max(fiveHour, sevenDay)
+                            let bindingPct = min(bindingUsage / 100.0, 1.0)
+                            let bindingResetDate = sevenDay >= fiveHour ? account.sevenDayResetDate : account.fiveHourResetDate
+                            let bindingMaxHours: Double = sevenDay >= fiveHour ? 192 : (account.serviceType == .gemini ? 25 : 6)
+
                             GeometryReader { geo in
                                 ZStack(alignment: .leading) {
                                     RoundedRectangle(cornerRadius: 2)
                                         .fill(.primary.opacity(0.08))
                                     RoundedRectangle(cornerRadius: 2)
-                                        .fill(compactRateBarColor(account.fiveHourUsage ?? 0))
-                                        .frame(width: max(0, geo.size.width * fiveHourPct))
-                                        .animation(.easeInOut(duration: 0.5), value: fiveHourPct)
+                                        .fill(compactRateBarColor(bindingUsage))
+                                        .frame(width: max(0, geo.size.width * bindingPct))
+                                        .animation(.easeInOut(duration: 0.5), value: bindingPct)
                                 }
                             }
                             .frame(maxWidth: 60, maxHeight: 4)
 
-                            Text("\(Int(account.fiveHourUsage ?? 0))%")
+                            Text("\(Int(bindingUsage))%")
                                 .font(.system(size: 10, weight: .medium, design: .monospaced))
-                                .foregroundStyle((account.fiveHourUsage ?? 0) >= 100 ? .red : .secondary)
+                                .foregroundStyle(bindingUsage >= 100 ? .red : .secondary)
                                 .fixedSize()
 
-                            if Account.isResetReasonable(account.fiveHourResetDate, maxHours: 6) {
-                                Text(Account.resetLabel(for: account.fiveHourResetDate))
+                            if Account.isResetReasonable(bindingResetDate, maxHours: bindingMaxHours) {
+                                Text(Account.resetLabel(for: bindingResetDate))
                                     .font(.system(size: 9))
                                     .foregroundStyle(.tertiary)
                                     .fixedSize()

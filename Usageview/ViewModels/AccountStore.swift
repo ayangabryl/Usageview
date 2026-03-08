@@ -673,10 +673,12 @@ final class AccountStore {
 
     // MARK: - Dynamic Menu Bar Icon
 
-    /// The usage percentage (0–100) for a specific account, using the most relevant metric.
+    /// The usage percentage (0–100) for a specific account, using the binding constraint.
     func accountUsagePercent(_ account: Account) -> Double {
+        // For dual-window accounts (Claude, ChatGPT, Gemini), use whichever window is fuller
         if let fiveHour = account.fiveHourUsage {
-            return fiveHour
+            let sevenDay = account.sevenDayUsage ?? 0
+            return max(fiveHour, sevenDay)
         } else if account.usageLimit > 0 {
             return account.usagePercentage * 100
         }
