@@ -113,6 +113,39 @@ cp -R "$BUILT_APP" "$APP_PATH"
 
 echo "   App: $(du -sh "$APP_PATH" | cut -f1) → ${APP_PATH}"
 
+# ── Step 2b: Re-sign Sparkle components with Developer ID (inside-out) ──────
+if [[ -n "${CODE_SIGN_IDENTITY:-}" ]]; then
+    echo "🔐 Re-signing Sparkle framework components..."
+    SPARKLE_FW="$APP_PATH/Contents/Frameworks/Sparkle.framework"
+    SIGN_FLAGS=(--force --options runtime --timestamp --sign "${CODE_SIGN_IDENTITY}")
+
+    # 1. XPC services (deepest nested binaries first)
+    for xpc in "$SPARKLE_FW"/Versions/B/XPCServices/*.xpc; do
+        [[ -d "$xpc" ]] && /usr/bin/codesign "${SIGN_FLAGS[@]}" "$xpc"
+    done
+
+    # 2. Updater.app (nested app)
+    [[ -d "$SPARKLE_FW/Versions/B/Updater.app" ]] && \
+        /usr/bin/codesign "${SIGN_FLAGS[@]}" "$SPARKLE_FW/Versions/B/Updater.app"
+
+    # 3. Autoupdate binary
+    [[ -f "$SPARKLE_FW/Versions/B/Autoupdate" ]] && \
+        /usr/bin/codesign "${SIGN_FLAGS[@]}" "$SPARKLE_FW/Versions/B/Autoupdate"
+
+    # 4. Sparkle framework itself
+    /usr/bin/codesign "${SIGN_FLAGS[@]}" "$SPARKLE_FW"
+
+    # 5. Re-sign the main app (top level, must be last)
+    /usr/bin/codesign "${SIGN_FLAGS[@]}" "$APP_PATH"
+
+    echo "   ✅ All components signed"
+    # Verify the full bundle
+    codesign --verify --deep --strict "$APP_PATH" && echo "   ✅ Signature verified" || {
+        echo "❌ Signature verification failed"
+        exit 1
+    }
+fi
+
 # ── Step 3: Build the DMG ────────────────────────────────────────────────────
 echo "💿 Creating DMG..."
 
@@ -158,27 +191,21 @@ create-dmg \
     "$DMG_PATH" \
     "$DMG_DIR"
 
-# ── Step 4: Submit for notarization (async) ─────────────────────────────────
+# ── Step 4: Submit for notarization and wait ────────────────────────────────
 if [[ -n "${APPLE_ID:-}" && -n "${APPLE_APP_PASSWORD:-}" && -n "${TEAM_ID:-}" ]]; then
-    echo "📤 Submitting DMG for notarization (async)..."
-    SUBMIT_OUTPUT=$(xcrun notarytool submit "$DMG_PATH" \
+    echo "📤 Submitting DMG for notarization (waiting for approval)..."
+    xcrun notarytool submit "$DMG_PATH" \
         --apple-id "$APPLE_ID" \
         --password "$APPLE_APP_PASSWORD" \
-        --team-id "$TEAM_ID" 2>&1)
+        --team-id "$TEAM_ID" \
+        --wait 2>&1
 
-    echo "$SUBMIT_OUTPUT"
-
-    SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | grep "id:" | head -1 | awk '{print $2}')
-
-    if [[ -n "$SUBMISSION_ID" ]]; then
-        echo ""
-        echo "📋 Submission ID: ${SUBMISSION_ID}"
-        echo "   Check status:  make notarize-status"
-        echo "   Staple when ready: make staple"
-    else
-        echo "❌ Notarization submission failed"
+    echo "📎 Stapling notarization ticket to DMG..."
+    xcrun stapler staple "$DMG_PATH" || {
+        echo "❌ Stapling failed — notarization may have been rejected"
         exit 1
-    fi
+    }
+    echo "   ✅ Notarized and stapled"
 else
     echo "⚠️  Skipping notarization (APPLE_ID / APPLE_APP_PASSWORD / TEAM_ID not set)"
 fi

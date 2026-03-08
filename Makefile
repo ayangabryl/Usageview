@@ -42,6 +42,14 @@ release:
 	echo "── Step 1/6: Building & creating DMG ──────────────" && \
 	export CODE_SIGN_IDENTITY="Developer ID Application: Ian Gabriel Agujitas (MZRACJ7Z64)" && \
 	export TEAM_ID="MZRACJ7Z64" && \
+	if [ -z "$${APPLE_ID}" ] || [ -z "$${APPLE_APP_PASSWORD}" ]; then \
+		echo "❌ APPLE_ID and APPLE_APP_PASSWORD must be set for notarization"; \
+		echo "   export APPLE_ID=you@example.com"; \
+		echo "   export APPLE_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx  (app-specific password)"; \
+		exit 1; \
+	fi && \
+	export APPLE_ID="$${APPLE_ID}" && \
+	export APPLE_APP_PASSWORD="$${APPLE_APP_PASSWORD}" && \
 	chmod +x Scripts/build-dmg.sh && \
 	./Scripts/build-dmg.sh && \
 	\
@@ -86,17 +94,14 @@ release:
 		--title "Usageview v$${VERSION}" \
 		--generate-notes && \
 	\
-	echo "── Step 6/6: Waiting for notarization ──────────────" && \
-	echo "   ⏳ Notarization was submitted during DMG build." && \
-	echo "   Run 'make staple' once notarization completes." && \
 	echo "" && \
 	echo "═══════════════════════════════════════════════════" && \
 	echo "  ✅ Release v$${VERSION} published!" && \
 	echo "  📦 DMG:      $$DMG" && \
 	echo "  🔑 Sparkle:  EdDSA signed" && \
+	echo "  🍎 Apple:    Notarized & stapled" && \
 	echo "  📡 Appcast:  Updated & pushed" && \
 	echo "  🐙 Release:  https://github.com/ayangabryl/Usageview/releases/tag/v$${VERSION}" && \
-	echo "  ⏳ Next:     make staple (after notarization)" && \
 	echo "═══════════════════════════════════════════════════"
 
 # Tag and push (without building — useful for CI-only releases)
