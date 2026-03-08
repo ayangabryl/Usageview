@@ -66,7 +66,7 @@ enum ServiceType: String, Codable, CaseIterable, Sendable {
         case .claude: "OAuth or API key"
         case .copilot: "Device flow sign-in"
         case .chatgpt: "OAuth or API key"
-        case .gemini: "API key"
+        case .gemini: "Gemini CLI or API key"
         case .kimi: "API key"
         case .cursor: "Session token"
         case .openrouter: "API key"
@@ -79,8 +79,8 @@ enum ServiceType: String, Codable, CaseIterable, Sendable {
     /// Whether this service supports multiple auth methods
     var supportsMultipleAuthMethods: Bool {
         switch self {
-        case .claude, .chatgpt: true
-        case .copilot, .gemini, .kimi, .cursor, .openrouter, .kiro, .augment, .jetbrainsAI: false
+        case .claude, .chatgpt, .gemini: true
+        case .copilot, .kimi, .cursor, .openrouter, .kiro, .augment, .jetbrainsAI: false
         }
     }
 

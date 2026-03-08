@@ -442,18 +442,49 @@ final class AccountStore {
             }
 
         case .gemini:
-            if let status = await geminiUsage.fetchStatus(for: account.id) {
-                if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-                    if status.isActive {
-                        let label = status.hasProModels
-                            ? "\(status.modelCount) models · Pro"
-                            : "\(status.modelCount) models"
-                        accounts[index].usageUnit = label
-                        accounts[index].planName = status.hasProModels ? "Pro" : "Free"
-                    } else {
-                        accounts[index].usageUnit = "Inactive"
+            if account.authMethod == .oauth {
+                // OAuth: fetch real quota data from Gemini CLI credentials
+                if let usage = await geminiUsage.fetchOAuthUsage(for: account.id) {
+                    if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+                        // Store Pro as primary (fiveHourUsage) and Flash as secondary (sevenDayUsage)
+                        accounts[index].fiveHourUsage = usage.proPercentUsed
+                        accounts[index].fiveHourResetDate = usage.proResetDate
+                        if let flash = usage.flashPercentUsed {
+                            accounts[index].sevenDayUsage = flash
+                            accounts[index].sevenDayResetDate = usage.flashResetDate
+                        }
+
+                        // Primary usage = binding constraint
+                        accounts[index].currentUsage = usage.primaryPercentUsed
+                        accounts[index].usageLimit = 100
+                        accounts[index].usageUnit = "% used"
+                        if let reset = usage.primaryResetDate {
+                            accounts[index].resetDate = reset
+                        }
+                        if let plan = usage.planName {
+                            accounts[index].planName = plan
+                        }
+                        if let email = usage.accountEmail {
+                            accounts[index].username = email
+                        }
+                        save()
                     }
-                    save()
+                }
+            } else {
+                // API key: status-only check
+                if let status = await geminiUsage.fetchStatus(for: account.id) {
+                    if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+                        if status.isActive {
+                            let label = status.hasProModels
+                                ? "\(status.modelCount) models · Pro"
+                                : "\(status.modelCount) models"
+                            accounts[index].usageUnit = label
+                            accounts[index].planName = status.hasProModels ? "Pro" : "Free"
+                        } else {
+                            accounts[index].usageUnit = "Inactive"
+                        }
+                        save()
+                    }
                 }
             }
 

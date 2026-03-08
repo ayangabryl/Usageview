@@ -21,6 +21,7 @@ struct MenuBarContentView: View {
         case connectOpenAI(UUID)
         case connectOpenAIAPIKey(UUID)
         case connectGemini(UUID)
+        case connectGeminiAPIKey(UUID)
         case connectKimi(UUID)
         case connectCursor(UUID)
         case connectOpenRouter(UUID)
@@ -50,7 +51,9 @@ struct MenuBarContentView: View {
             case .connectOpenAIAPIKey(let id):
                 openaiAPIKeyConnectView(accountId: id)
             case .connectGemini(let id):
-                geminiConnectView(accountId: id)
+                geminiOAuthConnectView(accountId: id)
+            case .connectGeminiAPIKey(let id):
+                geminiAPIKeyConnectView(accountId: id)
             case .connectKimi(let id):
                 kimiConnectView(accountId: id)
             case .connectCursor(let id):
@@ -202,7 +205,8 @@ struct MenuBarContentView: View {
                     case .copilot: navigate(to: .connectGitHub(account.id))
                     case .chatgpt:
                         navigate(to: account.authMethod == .apiKey ? .connectOpenAIAPIKey(account.id) : .connectOpenAI(account.id))
-                    case .gemini: navigate(to: .connectGemini(account.id))
+                    case .gemini:
+                        navigate(to: account.authMethod == .apiKey ? .connectGeminiAPIKey(account.id) : .connectGemini(account.id))
                     case .kimi: navigate(to: .connectKimi(account.id))
                     case .cursor: navigate(to: .connectCursor(account.id))
                     case .openrouter: navigate(to: .connectOpenRouter(account.id))
@@ -241,7 +245,8 @@ struct MenuBarContentView: View {
                     case .copilot: navigate(to: .connectGitHub(account.id))
                     case .chatgpt:
                         navigate(to: account.authMethod == .apiKey ? .connectOpenAIAPIKey(account.id) : .connectOpenAI(account.id))
-                    case .gemini: navigate(to: .connectGemini(account.id))
+                    case .gemini:
+                        navigate(to: account.authMethod == .apiKey ? .connectGeminiAPIKey(account.id) : .connectGemini(account.id))
                     case .kimi: navigate(to: .connectKimi(account.id))
                     case .cursor: navigate(to: .connectCursor(account.id))
                     case .openrouter: navigate(to: .connectOpenRouter(account.id))
@@ -303,14 +308,13 @@ struct MenuBarContentView: View {
                             let account = store.addAccount(serviceType: type, authMethod: type == .copilot ? .oauth : .apiKey)
                             switch type {
                             case .copilot: navigate(to: .connectGitHub(account.id))
-                            case .gemini: navigate(to: .connectGemini(account.id))
                             case .kimi: navigate(to: .connectKimi(account.id))
                             case .cursor: navigate(to: .connectCursor(account.id))
                             case .openrouter: navigate(to: .connectOpenRouter(account.id))
                             case .kiro: navigate(to: .connectKiro(account.id))
                             case .augment: navigate(to: .connectAugment(account.id))
                             case .jetbrainsAI: navigate(to: .connectJetBrains(account.id))
-                            case .claude, .chatgpt: break // handled above
+                            case .claude, .chatgpt, .gemini: break // handled above
                             }
                         }
                     } label: {
@@ -368,13 +372,14 @@ struct MenuBarContentView: View {
                         switch serviceType {
                         case .claude: navigate(to: .connectClaude(accountId))
                         case .chatgpt: navigate(to: .connectOpenAI(accountId))
+                        case .gemini: navigate(to: .connectGemini(accountId))
                         default: break
                         }
                     } label: {
                         HStack(spacing: 8) {
-                            Image(systemName: "person.badge.key")
+                            Image(systemName: serviceType == .gemini ? "terminal" : "person.badge.key")
                                 .font(.subheadline)
-                            Text("Sign in with OAuth")
+                            Text(serviceType == .gemini ? "Gemini CLI (OAuth)" : "Sign in with OAuth")
                                 .font(.subheadline.weight(.medium))
                         }
                         .frame(maxWidth: .infinity)
@@ -393,6 +398,7 @@ struct MenuBarContentView: View {
                         switch serviceType {
                         case .claude: navigate(to: .connectClaudeAPIKey(accountId))
                         case .chatgpt: navigate(to: .connectOpenAIAPIKey(accountId))
+                        case .gemini: navigate(to: .connectGeminiAPIKey(accountId))
                         default: break
                         }
                     } label: {
@@ -561,9 +567,37 @@ struct MenuBarContentView: View {
         )
     }
 
-    // MARK: - Gemini Connect (Inline - API Key)
+    // MARK: - Gemini Connect (OAuth via CLI)
 
-    private func geminiConnectView(accountId: UUID) -> some View {
+    private func geminiOAuthConnectView(accountId: UUID) -> some View {
+        GeminiOAuthConnectView(
+            authService: store.geminiAuth,
+            accountId: accountId,
+            onDone: { info in
+                if let info {
+                    store.updateAccountAfterConnect(
+                        id: accountId,
+                        username: info.name ?? info.email,
+                        avatarURL: nil,
+                        authMethod: .oauth
+                    )
+                    Task {
+                        if let account = store.accounts.first(where: { $0.id == accountId }) {
+                            await store.refreshAccount(account)
+                        }
+                    }
+                    goHome()
+                } else {
+                    store.removeAccount(id: accountId)
+                    goBack()
+                }
+            }
+        )
+    }
+
+    // MARK: - Gemini Connect (API Key)
+
+    private func geminiAPIKeyConnectView(accountId: UUID) -> some View {
         GeminiInlineConnectView(
             authService: store.geminiAuth,
             accountId: accountId,
@@ -1878,6 +1912,114 @@ struct KimiInlineConnectView: View {
             .buttonStyle(.plain)
 
             Text("Connect Kimi AI")
+                .font(.headline)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - Gemini OAuth Connect (CLI Credentials)
+
+struct GeminiOAuthConnectView: View {
+    let authService: GeminiAuthService
+    let accountId: UUID
+    let onDone: (GeminiAccountInfo?) -> Void
+    @State private var isConnecting: Bool = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            navHeader
+
+            ServiceIconView(serviceType: .gemini, avatarURL: nil, size: 48)
+
+            VStack(spacing: 6) {
+                Text("Connect via Gemini CLI")
+                    .font(.subheadline.weight(.medium))
+
+                Text("Uses your Gemini CLI OAuth credentials\nto show real-time quota & usage data.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+            }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, 16)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(spacing: 10) {
+                Button {
+                    isConnecting = true
+                    errorMessage = nil
+                    Task {
+                        do {
+                            let info = try await authService.connectOAuth(for: accountId)
+                            onDone(info)
+                        } catch {
+                            errorMessage = error.localizedDescription
+                        }
+                        isConnecting = false
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        if isConnecting {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "terminal")
+                                .font(.subheadline)
+                        }
+                        Text(isConnecting ? "Connecting..." : "Connect")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(ServiceType.gemini.accentColor)
+                .disabled(isConnecting)
+                .padding(.horizontal, 16)
+            }
+
+            VStack(spacing: 4) {
+                Text("Requires the Gemini CLI to be installed and authenticated.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+
+                Link(destination: URL(string: "https://github.com/google-gemini/gemini-cli")!) {
+                    Text("Install Gemini CLI →")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            Spacer().frame(height: 4)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var navHeader: some View {
+        HStack(spacing: 8) {
+            Button { onDone(nil) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.medium))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Text("Connect Gemini")
                 .font(.headline)
 
             Spacer()

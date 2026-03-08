@@ -131,7 +131,7 @@ struct AccountCardView: View {
                         .foregroundStyle(.tertiary)
                     }
                 } else if account.hasDualWindows {
-                    // Claude rate windows
+                    // Dual rate windows (Claude/ChatGPT: 5h/7d, Gemini: Pro/Flash)
                     if showWeeklyLimit {
                         // Show both windows, labeled
                         if isRefreshing {
@@ -143,13 +143,13 @@ struct AccountCardView: View {
                         }
 
                         claudeRateRow(
-                            label: "5h",
+                            label: account.serviceType == .gemini ? "Pro" : "5h",
                             usage: account.fiveHourUsage ?? 0,
                             resetDate: account.fiveHourResetDate
                         )
 
                         claudeRateRow(
-                            label: "7d",
+                            label: account.serviceType == .gemini ? "Flash" : "7d",
                             usage: account.sevenDayUsage ?? 0,
                             resetDate: account.sevenDayResetDate
                         )
@@ -181,7 +181,7 @@ struct AccountCardView: View {
 
                             Spacer()
 
-                            if Account.isResetReasonable(account.fiveHourResetDate, maxHours: 6) {
+                            if Account.isResetReasonable(account.fiveHourResetDate, maxHours: account.serviceType == .gemini ? 25 : 6) {
                                 Text("resets \(Account.resetLabel(for: account.fiveHourResetDate))")
                                     .font(.caption)
                                     .foregroundStyle(.tertiary)

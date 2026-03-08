@@ -98,10 +98,16 @@ struct Account: Codable, Identifiable, Sendable {
         jetbrainsQuotaResetDate = try container.decodeIfPresent(Date.self, forKey: .jetbrainsQuotaResetDate)
     }
 
+    /// Whether this Gemini OAuth account has quota data from the CLI
+    var hasGeminiQuota: Bool {
+        serviceType == .gemini && authMethod == .oauth && fiveHourUsage != nil
+    }
+
     /// Whether this account only shows connection status (no real usage tracking)
     var isStatusOnly: Bool {
         switch (serviceType, authMethod) {
-        case (.gemini, _): return true
+        case (.gemini, .oauth): return !hasGeminiQuota  // OAuth shows real quota when available
+        case (.gemini, .apiKey): return true
         case (.claude, .apiKey), (.chatgpt, .apiKey): return true
         case (.chatgpt, .oauth): return !hasChatGPTUsage  // Show usage when /wham/usage data is available
         case (.kimi, _): return !hasKimiBilling  // Status-only until billing data loads
@@ -124,9 +130,9 @@ struct Account: Codable, Identifiable, Sendable {
         return currentUsage >= usageLimit
     }
 
-    /// Whether this is a Claude or ChatGPT OAuth account with dual rate windows
+    /// Whether this is a Claude, ChatGPT, or Gemini OAuth account with dual rate windows
     var hasDualWindows: Bool {
-        (serviceType == .claude || serviceType == .chatgpt) && authMethod == .oauth && fiveHourUsage != nil && sevenDayUsage != nil
+        (serviceType == .claude || serviceType == .chatgpt || serviceType == .gemini) && authMethod == .oauth && fiveHourUsage != nil && sevenDayUsage != nil
     }
 
     /// Whether this Copilot account has both premium and chat quotas
