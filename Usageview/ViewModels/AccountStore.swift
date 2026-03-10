@@ -566,8 +566,13 @@ final class AccountStore {
     }
 
     func refreshAll() async {
-        for account in accounts where isConnected(for: account) {
-            await refreshAccount(account)
+        let connected = accounts.filter { isConnected(for: $0) }
+        await withTaskGroup(of: Void.self) { group in
+            for account in connected {
+                group.addTask { @MainActor in
+                    await self.refreshAccount(account)
+                }
+            }
         }
     }
 
