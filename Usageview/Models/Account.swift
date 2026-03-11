@@ -45,6 +45,9 @@ struct Account: Codable, Identifiable, Sendable {
     var openRouterTotalCredits: Double?
     var openRouterTotalUsage: Double?
 
+    // App Review demo mode flag
+    var isDemoAccount: Bool = false
+
     // JetBrains AI quota
     var jetbrainsQuotaCurrent: Double?
     var jetbrainsQuotaMaximum: Double?
@@ -93,6 +96,7 @@ struct Account: Codable, Identifiable, Sendable {
         kimiRateLimitResetDate = try container.decodeIfPresent(Date.self, forKey: .kimiRateLimitResetDate)
         openRouterTotalCredits = try container.decodeIfPresent(Double.self, forKey: .openRouterTotalCredits)
         openRouterTotalUsage = try container.decodeIfPresent(Double.self, forKey: .openRouterTotalUsage)
+        isDemoAccount = try container.decodeIfPresent(Bool.self, forKey: .isDemoAccount) ?? false
         jetbrainsQuotaCurrent = try container.decodeIfPresent(Double.self, forKey: .jetbrainsQuotaCurrent)
         jetbrainsQuotaMaximum = try container.decodeIfPresent(Double.self, forKey: .jetbrainsQuotaMaximum)
         jetbrainsQuotaResetDate = try container.decodeIfPresent(Date.self, forKey: .jetbrainsQuotaResetDate)
@@ -105,6 +109,9 @@ struct Account: Codable, Identifiable, Sendable {
 
     /// Whether this account only shows connection status (no real usage tracking)
     var isStatusOnly: Bool {
+        // Demo accounts: show usage bar only if they have actual usage data; otherwise stay status-only
+        if isDemoAccount && usageLimit > 0 { return false }
+        if isDemoAccount { return true }
         switch (serviceType, authMethod) {
         case (.gemini, .oauth): return !hasGeminiQuota  // OAuth shows real quota when available
         case (.gemini, .apiKey): return true

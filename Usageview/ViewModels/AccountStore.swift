@@ -222,7 +222,7 @@ final class AccountStore {
         }
     }
 
-    func updateAccountAfterConnect(id: UUID, username: String?, avatarURL: String?, authMethod: AuthMethod? = nil) {
+    func updateAccountAfterConnect(id: UUID, username: String?, avatarURL: String?, authMethod: AuthMethod? = nil, isDemoKey: Bool = false) {
         if let index = accounts.firstIndex(where: { $0.id == id }) {
             accounts[index].username = username
             accounts[index].avatarURL = avatarURL
@@ -232,9 +232,25 @@ final class AccountStore {
             if let username, accounts[index].label.isEmpty {
                 accounts[index].label = username
             }
+            // Detect demo key by checking keychain right after it was saved
+            if isDemoKey || hasStoredDemoKey(for: id) {
+                accounts[index].isDemoAccount = true
+            }
             save()
             flashMenuBarCheckmark()
         }
+    }
+
+    /// Check if any API-key-capable service has the magic demo key stored for this account.
+    private func hasStoredDemoKey(for accountId: UUID) -> Bool {
+        let key = DemoDataService.magicKey
+        return claudeAuth.getAPIKey(for: accountId) == key
+            || openaiAuth.getAPIKey(for: accountId) == key
+            || geminiAuth.getAPIKey(for: accountId) == key
+            || openrouterAuth.getAPIKey(for: accountId) == key
+            || kimiAuth.getAPIKey(for: accountId) == key
+            || kiroAuth.getAPIKey(for: accountId) == key
+            || augmentAuth.getAPIKey(for: accountId) == key
     }
 
     /// Briefly show a green checkmark, then sweep the gauge from 0 → actual%.
@@ -293,9 +309,51 @@ final class AccountStore {
 
     // MARK: - Refresh
 
+    /// Returns true if this account was connected with the App Review demo key.
+    /// Checks the persisted flag first; falls back to a live keychain read and
+    /// marks the account if the key is found (handles old accounts or missed saves).
+    private func isDemoKey(for account: Account) -> Bool {
+        if account.isDemoAccount { return true }
+        guard hasStoredDemoKey(for: account.id) else { return false }
+        // Mark flag for future refreshes
+        if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+            accounts[index].isDemoAccount = true
+            save()
+        }
+        return true
+    }
+
+    /// Populate an account with mock data from DemoDataService (used by App Review).
+    private func applyDemoData(for account: Account) {
+        guard let index = accounts.firstIndex(where: { $0.id == account.id }) else { return }
+        let snap = DemoDataService.snapshot(for: account.serviceType)
+        accounts[index].isDemoAccount = true
+        accounts[index].username = snap.username
+        accounts[index].planName = snap.planName
+        accounts[index].organizationName = snap.organizationName
+        accounts[index].currentUsage = snap.currentUsage
+        accounts[index].usageLimit = snap.usageLimit
+        accounts[index].usageUnit = snap.usageUnit
+        accounts[index].resetDate = snap.resetDate
+        accounts[index].fiveHourUsage = snap.fiveHourUsage
+        accounts[index].fiveHourResetDate = snap.fiveHourResetDate
+        accounts[index].sevenDayUsage = snap.sevenDayUsage
+        accounts[index].sevenDayResetDate = snap.sevenDayResetDate
+        accounts[index].openRouterTotalCredits = snap.openRouterTotalCredits
+        accounts[index].openRouterTotalUsage = snap.openRouterTotalUsage
+        save()
+    }
+
     func refreshAccount(_ account: Account) async {
         refreshingIds.insert(account.id)
         defer { refreshingIds.remove(account.id) }
+
+        // App Review demo mode: if the account's API key is the magic demo key,
+        // return mock data instead of making real network calls.
+        if isDemoKey(for: account) {
+            applyDemoData(for: account)
+            return
+        }
 
         switch account.serviceType {
         case .copilot:
