@@ -345,7 +345,7 @@
 				);
 				MARKETING_VERSION = 1.2.0;
 				"OTHER_SWIFT_FLAGS[arch=*]" = "-DMAS";
-				PRODUCT_BUNDLE_IDENTIFIER = com.ayangabryl.usageview;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ayangabryl.quotabar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
