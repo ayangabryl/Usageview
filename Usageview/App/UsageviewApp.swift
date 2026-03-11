@@ -5,7 +5,11 @@ import AppKit
 struct UsageviewApp: App {
     @State private var store = AccountStore()
     @State private var refreshTimer: Timer?
+    #if !MAS
     @State private var sparkle = SparkleUpdater()
+    #else
+    private let sparkle = SparkleUpdater()
+    #endif
 
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)

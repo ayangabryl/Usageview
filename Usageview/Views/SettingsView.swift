@@ -280,6 +280,7 @@ struct SettingsView: View {
 
     private var aboutContent: some View {
         VStack(alignment: .leading, spacing: 16) {
+            #if !MAS
             // Check for Updates
             settingsRow(icon: "arrow.triangle.2.circlepath", title: "Check for Updates", subtitle: "Download and install the latest version") {
                 Button("Check Now") {
@@ -300,6 +301,7 @@ struct SettingsView: View {
             }
 
             Divider()
+            #endif
 
             // Reset All Data
             settingsRow(icon: "trash", iconColor: .red, title: "Reset All Data", subtitle: "Remove all accounts, tokens, and cached data") {

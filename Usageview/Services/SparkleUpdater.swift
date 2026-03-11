@@ -1,6 +1,8 @@
 import Foundation
-import Sparkle
 import SwiftUI
+
+#if !MAS
+import Sparkle
 
 /// Wraps Sparkle's `SPUStandardUpdaterController` so
 /// SwiftUI views can trigger "Check for Updates" with a simple binding.
@@ -29,3 +31,14 @@ final class SparkleUpdater {
         controller.checkForUpdates(nil)
     }
 }
+#else
+/// No-op stub used for Mac App Store builds (Sparkle not permitted on MAS).
+@Observable
+@MainActor
+final class SparkleUpdater {
+    var canCheckForUpdates: Bool = false
+    var automaticallyChecksForUpdates: Bool = false
+    init() {}
+    func checkForUpdates() {}
+}
+#endif
