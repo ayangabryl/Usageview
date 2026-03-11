@@ -110,6 +110,29 @@ Open a PR with:
 - What data it tracks
 - How authentication works
 
+## Publishing a Release
+
+Run `make release` to build, sign, notarize, update the appcast, and publish to GitHub in one step.
+
+### ⚠️ Before every release — bump the build number
+
+Sparkle (the auto-updater) compares `sparkle:version` in `appcast.xml`, which comes from `CURRENT_PROJECT_VERSION` in `Usageview.xcodeproj/project.pbxproj`. It does **not** use the human-readable `MARKETING_VERSION`.
+
+If you forget to increment this integer, users already on that build number will see "You're up to date" even though a new version was published.
+
+**What to do:**
+
+1. Open `Usageview.xcodeproj/project.pbxproj`
+2. Find both occurrences of `CURRENT_PROJECT_VERSION` (Debug + Release configs) and increment the number:
+   ```
+   CURRENT_PROJECT_VERSION = 3;   ← bump this before every release
+   ```
+3. Then run `make release` as normal.
+
+Quick rule: **every new release = bump `CURRENT_PROJECT_VERSION` by 1.**
+
+---
+
 ## Commit Messages
 
 We use [Conventional Commits](https://www.conventionalcommits.org/). The commit-msg hook enforces this automatically.
