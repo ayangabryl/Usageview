@@ -2,8 +2,8 @@ import Foundation
 
 /// Provides mock usage data when the demo API key is entered.
 ///
-/// Usage for App Review: enter "DEMO-REVIEW-2026" as the API key for any
-/// service that supports API key auth (Claude, OpenAI, Gemini, OpenRouter).
+/// Usage for App Review: enter "uv-rev-4f8a2d1e9c3b7f6a" as the API key for any
+/// service that supports API key auth (Claude, OpenAI, Gemini, OpenRouter, Kimi, Kiro, Augment).
 /// The app will display realistic mock usage data without making real API calls.
 /// This key is not documented or exposed anywhere in the app UI.
 enum DemoDataService {
